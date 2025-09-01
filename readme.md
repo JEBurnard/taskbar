@@ -9,6 +9,12 @@ Many thanks to [m417z](https://github.com/m417z) for all the inspration
 * [WindHawk](https://windhawk.net/)
 * [7 Taskbar Tweaker](https://ramensoftware.com/7-taskbar-tweaker)
 
+# Build instructions
+* Install [Visual Studio 2022](https://visualstudio.microsoft.com/) with the `Desktop Development with C++` workflow.
+* Open `./taskbar.sln`
+* Click build
+* Run the main executable `./_build/output/taskbar.exe`
+
 # Licence
 Licenced under BSD-2-Clause AND GPL-3.0-only AND Unlicense
 * BSD-2-Clause:
