@@ -1,28 +1,54 @@
-#include <iostream>
+#include <Windows.h>
+#include <string>
+#include <algorithm>
+
 #include "MinHook.h"
+#include "taskbar.h"
+#include "common.h"
 
-int main()
+BOOL WINAPI DllMain(HINSTANCE modules, DWORD reason, LPVOID reserved)
 {
-	// initalise minhook
-	std::cout << "Initalising minhook...";
-	if (MH_Initialize() != MH_OK)
+	// get the process name that is calling us
+	wchar_t pName[MAX_PATH];
+	GetModuleFileNameW(NULL, pName, MAX_PATH);
+	auto name = std::wstring(pName);
+	std::transform(name.begin(), name.end(), name.begin(), tolower);
+	auto isExplorer = name.ends_with(L"explorer.exe");
+
+	// we only hook (a single thread) in explorer
+	if (!isExplorer)
 	{
-		std::cout << "failed." << std::endl;
-		return -1;
+		// inited ok (nothing to do)
+		return TRUE;
 	}
-	std::cout << "ok." << std::endl;
 
-	// todo: do work
-	std::cout << "todo: work" << std::endl;
-
-	// clean up
-	std::cout << "Uninitalising minhook...";
-	if (MH_Uninitialize() != MH_OK)
+	if (reason == DLL_PROCESS_ATTACH)
 	{
-		std::cout << "failed." << std::endl;
-		return -1;
-	}
-	std::cout << "ok." << std::endl;
+		// disable thread attach/detach calls
+		DisableThreadLibraryCalls(modules);
 
-	return 0;
+		// initalise minhook
+		LogLine(L"Initalising minhook");
+		if (MH_Initialize() != MH_OK)
+		{
+			LogLine(L"Failed to initalise minhook");
+			return FALSE;
+		}
+
+		// setup mods
+		setup_taskbar_middle_click();
+	}
+	else if (reason == DLL_PROCESS_DETACH)
+	{
+
+		// clean up
+		LogLine(L"Uninitalising minhook");
+		if (MH_Uninitialize() != MH_OK)
+		{
+			LogLine(L"Failed to clean up minhook");
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }

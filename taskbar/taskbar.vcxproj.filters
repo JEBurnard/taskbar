@@ -45,6 +45,15 @@
     <ClCompile Include="..\minhook\src\hde\hde64.c">
       <Filter>Source Files\minhook\hde</Filter>
     </ClCompile>
+    <ClCompile Include="taskbar_middle_click.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="common.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="functions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\minhook\src\buffer.h">
@@ -70,6 +79,18 @@
     </ClInclude>
     <ClInclude Include="..\minhook\include\MinHook.h">
       <Filter>Header Files\minhook</Filter>
+    </ClInclude>
+    <ClInclude Include="taskbar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="functions.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="main.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
