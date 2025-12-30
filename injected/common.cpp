@@ -1,12 +1,5 @@
-// Common code from WindHawk
-// Extracted from 
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/shared/logger_base.cpp
-// - https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-grouping.wh.cp
-// - https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mod.h
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mod.cpp
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mods_api_internal.h
-// Licence GPL-3.0-only
+// Common functionality
+// Licence GPL-3.0-only and Unlicence
 
 #include "common.h"
 
@@ -18,12 +11,14 @@
 #include <filesystem>
 #include <DbgHelp.h>
 
-#include "functions.h"
 #include "MinHook.h"
 
 
 namespace 
 {
+    // Log a debug line
+    // Based on https://github.com/ramensoftware/windhawk-mods/blob/main/src/windhawk/shared/logger_base.cpp
+    // Licence GPL-3.0-only
     void VLogLine(PCWSTR format, va_list args)
     {
         WCHAR buffer[1025];
@@ -48,6 +43,9 @@ namespace
         OutputDebugStringW(buffer);
     }
 
+    // Get the version of a library
+    // Based on https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp
+    // Licence GPL-3.0-only
     VS_FIXEDFILEINFO* GetModuleVersionInfo(HMODULE hModule, UINT* puPtrLen) 
     {
         void* pFixedFileInfo = nullptr;
@@ -78,6 +76,11 @@ namespace
         return (VS_FIXEDFILEINFO*)pFixedFileInfo;
     }
 
+    // Hook a function
+    // Based on:
+    // - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mod.h
+    // - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mod.cpp
+    // Licence GPL-3.0-only
     bool SetFunctionHook(void* targetFunction, void* hookFunction, void** originalFunction)
     {
         ULONG_PTR hookIdent = 1; // not needed in this implementation, todo: revert to vanilla minhook
@@ -142,103 +145,105 @@ WinVersion GetExplorerVersion()
     return WinVersion::Unsupported;
 }
 
-bool HookSymbols(HMODULE module, std::vector<SYMBOL_HOOK>& symbolHooks)
+bool HookSymbols(std::string& moduleName, std::vector<SYMBOL_HOOK>& symbolHooks)
 {
-    if (!module) 
-    {
-        LogLine(L"Module handle is null");
-        return false;
-    }
-
     if (symbolHooks.size() == 0)
     {
         return true;
     }
 
-    // find the debug symbols for this module
-    GUID pdbGuid;
-    DWORD pdbAge;
-    if (!Functions::ModuleGetPDBInfo(module, &pdbGuid, &pdbAge))
-    {
-        LogLine(L"Failed to get module debug information");
-        return false;
-    }
+    // true if all functions hooked successfully
+    bool ok = false;
 
-    // todo: get the symbol file from a symbol server or disk? ...
-    // ...
-    
-    // todo: cleanup / RAII
+    // items that may require cleanup
+    HANDLE hProcess = INVALID_HANDLE_VALUE;
 
-    // initalise symbol resolver
-    //SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-    //HANDLE hProcess = INVALID_HANDLE_VALUE;
-    HANDLE hCurrentProcess = GetCurrentProcess();
-    /*if (!DuplicateHandle(hCurrentProcess, hCurrentProcess, hCurrentProcess, &hProcess, 0, FALSE, DUPLICATE_SAME_ACCESS))
+    // while false error catching loop
+    do
     {
-        LogLine(L"DuplicateHandle returned error: %d", GetLastError());
-        return FALSE;
-    }*/
-    //if (!SymInitialize(hProcess, NULL, TRUE))
-    if (!SymInitialize(hCurrentProcess, NULL, FALSE))
-    {
-        LogLine(L"SymInitialize returned error: %d", GetLastError());
-        return FALSE;
-    }
+        // enable debug logs for symbol resolving
+        SymSetOptions(SYMOPT_DEBUG);
 
-    // todo: pass in instead
-    std::string moduleName = "taskbar.dll";
-
-    // load symbols for the module
-    //if (!SymLoadModuleEx(hProcess, NULL, moduleName.c_str(), NULL, 0, 0, NULL, 0))
-    if (!SymLoadModuleEx(hCurrentProcess, NULL, moduleName.c_str(), NULL, 0, 0, NULL, 0))
-    {
-        LogLine(L"SymLoadModuleEx returned error: %d", GetLastError());
-        return false;
-    }
-
-    try 
-    {
-        for (auto symbolHook : symbolHooks)
+        // initalise symbol resolver
+        HANDLE hCurrentProcess = GetCurrentProcess();
+        if (!DuplicateHandle(hCurrentProcess, hCurrentProcess, hCurrentProcess, &hProcess, 0, FALSE, DUPLICATE_SAME_ACCESS))
         {
-            // lookup this symbol
-            /*ULONG64 buffer[(sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(WCHAR) + sizeof(ULONG64) - 1) / sizeof(ULONG64)];
-            PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)buffer;
-            pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-            pSymbol->MaxNameLen = MAX_SYM_NAME;*/
-            struct CFullSymbol : SYMBOL_INFO {
-                CHAR szRestOfName[512];
-            } symbol;
-            ZeroMemory(&symbol, sizeof(symbol));
-            symbol.SizeOfStruct = sizeof(SYMBOL_INFO);
-            symbol.MaxNameLen = sizeof(symbol.szRestOfName) / sizeof(symbol.szRestOfName[0]);
-
-            // todo: need module name and symbol
-            // eg "taskbar.dll!<symbol>
-            LogLine(L"Finding symbol: %S", symbolHook.symbol.c_str());
-
-            // todo: this does not work.. = error 126 = cannot find symbol
-            // = need to change the symbol strings to match what is in taskbar.dll.pdb
-            //if (!SymFromName(hProcess, symbolHook.symbol.c_str(), pSymbol))
-            if (!SymFromName(hCurrentProcess, symbolHook.symbol.c_str(), &symbol))
-            {
-                LogLine(L"SymFromName returned error: %d", GetLastError());
-                return false;
-            }
-
-            //auto symbolAddress = (void*)pSymbol->Address;
-            auto symbolAddress = (void*)symbol.Address;
-            if (!SetFunctionHook(symbolAddress, symbolHook.pHookFunction, symbolHook.pOriginalFunction))
-            {
-                return false;
-            }
+            LogLine(L"Error: DuplicateHandle returned error: %d", GetLastError());
+            break;
         }
-  
-        return true;
-    }
-    catch (const std::exception& e) 
+        if (!SymInitialize(hCurrentProcess, NULL, FALSE))
+        {
+            LogLine(L"Error: SymInitialize returned error: %d", GetLastError());
+            break;
+        }
+
+        // load symbols from microsoft symbol server (caches in the "sym" folder in the working directory)
+        // needs SymSrv.dll and SrcSrv.dll to be in the same directory as (the dyamically loaded) DbgHelp.dll
+        std::string symbolServer = "srv*https://msdl.microsoft.com/download/symbols";
+        if (!SymSetSearchPath(hCurrentProcess, symbolServer.c_str()))
+        {
+            LogLine(L"Error: SymSetSearchPath returned error: %d", GetLastError());
+            break;
+        }
+
+        // load symbols for the module
+        if (!SymLoadModuleEx(hCurrentProcess, NULL, moduleName.c_str(), NULL, 0, 0, NULL, 0))
+        {
+            LogLine(L"Error: SymLoadModuleEx returned error: %d", GetLastError());
+            break;
+        }
+
+        try
+        {
+            for (auto symbolHook : symbolHooks)
+            {
+                // create store for symbol lookup
+                struct CFullSymbol : SYMBOL_INFO {
+                    CHAR nameBuffer[MAX_SYM_NAME];
+                } symbol;
+                ZeroMemory(&symbol, sizeof(symbol));
+                symbol.SizeOfStruct = sizeof(SYMBOL_INFO);
+                symbol.MaxNameLen = MAX_SYM_NAME;
+
+                // log
+                LogLine(L"Finding symbol: %S", symbolHook.symbol.c_str());
+                if (!symbolHook.symbol.starts_with(moduleName))
+                {
+                    LogLine(L"Error: symbol %S does not start with the module name %S", symbolHook.symbol.c_str(), moduleName.c_str());
+                    break;
+                }
+
+                // lookup the symbol
+                if (!SymFromName(hCurrentProcess, symbolHook.symbol.c_str(), &symbol))
+                {
+                    LogLine(L"Error: SymFromName returned error: %d", GetLastError());
+                    break;
+                }
+
+                // set the hook
+                auto symbolAddress = (void*)symbol.Address;
+                if (!SetFunctionHook(symbolAddress, symbolHook.pHookFunction, symbolHook.pOriginalFunction))
+                {
+                    break;
+                }
+            }
+
+            // all hooked successfully
+            LogLine(L"All symbols hooked successfully");
+            ok = true;
+        }
+        catch (const std::exception& e)
+        {
+            LogLine(L"Error: HookSymbols threw exception: %hs", e.what());
+        }
+    } while (false);
+
+    // cleaup
+    if (hProcess != INVALID_HANDLE_VALUE)
     {
-        LogLine(L"Error: HookSymbols threw exception: %hs", e.what());
+        (void)SymCleanup(hProcess);
+        (void)CloseHandle(hProcess);
     }
 
-    return false;
+    return ok;
 }

@@ -200,69 +200,75 @@ void setup_taskbar_middle_click()
         return;
     }
 
-    auto taskbarModule = LoadLibrary(L"taskbar.dll");
-    if (!taskbarModule) 
-    {
-        LogLine(L"Couldn't load taskbar.dll");
-        return;
-    }
-
+    // Taskbar.dll hooks
+    std::string moduleName = "Taskbar.dll";
     std::vector<SYMBOL_HOOK> symbolHooks = {
         {
-            //public: virtual long __cdecl CTaskListWnd::HandleClick(struct ITaskGroup *,struct ITaskItem *,struct winrt::Windows::System::LauncherOptions const &)
+            // public: virtual long __cdecl CTaskListWnd::HandleClick(struct ITaskGroup *,struct ITaskItem *,struct winrt::Windows::System::LauncherOptions const &)
             {"Taskbar.dll!?HandleClick@CTaskListWnd@@UEAAJPEAUITaskGroup@@PEAUITaskItem@@AEBULauncherOptions@System@Windows@winrt@@@Z"},
             (void**)& CTaskListWnd_HandleClick_Original,
             CTaskListWnd_HandleClick_Hook,
         },
         {
-            {R"(protected: void __cdecl CTaskListWnd::_HandleClick(struct ITaskBtnGroup *,int,enum CTaskListWnd::eCLICKACTION,int,int))"},
+            // protected: void __cdecl CTaskListWnd::_HandleClick(struct ITaskBtnGroup *,int,enum CTaskListWnd::eCLICKACTION,int,int)
+            {"Taskbar.dll!?_HandleClick@CTaskListWnd@@IEAAXPEAUITaskBtnGroup@@HW4eCLICKACTION@1@HH@Z"},
             (void**)&CTaskListWnd__HandleClick_Original,
             CTaskListWnd__HandleClick_Hook,
         },
         {
-            {R"(public: virtual long __cdecl CTaskBand::Launch(struct ITaskGroup *,struct tagPOINT const &,enum LaunchFromTaskbarOptions))"},
+            // public: virtual long __cdecl CTaskBand::Launch(struct ITaskGroup *,struct tagPOINT const &,enum LaunchFromTaskbarOptions)
+            {"Taskbar.dll!?Launch@CTaskBand@@UEAAJPEAUITaskGroup@@AEBUtagPOINT@@W4LaunchFromTaskbarOptions@@@Z"},
             (void**)&CTaskBand_Launch_Original,
             CTaskBand_Launch_Hook,
         },
         {
-            {"(public: virtual long __cdecl CTaskListWnd::GetActiveBtn(struct ITaskGroup * *,int *))"},
+            // public: virtual long __cdecl CTaskListWnd::GetActiveBtn(struct ITaskGroup * *,int *)
+            {"Taskbar.dll!?GetActiveBtn@CTaskListWnd@@UEAAJPEAPEAUITaskGroup@@PEAH@Z"},
             (void**)&CTaskListWnd_GetActiveBtn_Original,
         },
         {
-            {R"(public: virtual void __cdecl CTaskListWnd::ProcessJumpViewCloseWindow(struct HWND__ *,struct ITaskGroup *,struct HMONITOR__ *))"},
+            // public: virtual void __cdecl CTaskListWnd::ProcessJumpViewCloseWindow(struct HWND__ *,struct ITaskGroup *,struct HMONITOR__ *)
+            {"Taskbar.dll!?ProcessJumpViewCloseWindow@CTaskListWnd@@UEAAXPEAUHWND__@@PEAUITaskGroup@@PEAUHMONITOR__@@@Z"},
             (void**)&CTaskListWnd_ProcessJumpViewCloseWindow_Original,
         },
         {
-            {"(protected: void __cdecl CTaskBand::_EndTask(struct HWND__ * const,int))"},
+            // protected: void __cdecl CTaskBand::_EndTask(struct HWND__ * const,int)
+            {"Taskbar.dll!?_EndTask@CTaskBand@@IEAAXQEAUHWND__@@H@Z"},
             (void**)&CTaskBand__EndTask_Original,
         },
         {
-            {"(public: virtual enum eTBGROUPTYPE __cdecl CTaskBtnGroup::GetGroupType(void))"},
+            // public: virtual enum eTBGROUPTYPE __cdecl CTaskBtnGroup::GetGroupType(void)
+            {"Taskbar.dll!?GetGroupType@CTaskBtnGroup@@UEAA?AW4eTBGROUPTYPE@@XZ"},
             (void**)&CTaskBtnGroup_GetGroupType_Original,
         },
         {
-            {"(public: virtual struct ITaskGroup * __cdecl CTaskBtnGroup::GetGroup(void))"},
+            // public: virtual struct ITaskGroup * __cdecl CTaskBtnGroup::GetGroup(void)
+            {"Taskbar.dll!"},
             (void**)&CTaskBtnGroup_GetGroup_Original,
         },
         {
-            {"(public: virtual struct ITaskItem * __cdecl CTaskBtnGroup::GetTaskItem(int))"},
+            // public: virtual struct ITaskItem * __cdecl CTaskBtnGroup::GetTaskItem(int)
+            {"Taskbar.dll!?GetGroup@CTaskBtnGroup@@UEAAPEAUITaskGroup@@XZ"},
             (void**)&CTaskBtnGroup_GetTaskItem_Original,
         },
         {
-            {"(public: virtual struct HWND__ * __cdecl CWindowTaskItem::GetWindow(void))"},
+            // public: virtual struct HWND__ * __cdecl CWindowTaskItem::GetWindow(void)
+            {"Taskbar.dll!?GetWindow@CWindowTaskItem@@UEAAPEAUHWND__@@XZ"},
             (void**)&CWindowTaskItem_GetWindow_Original,
         },
         {
-            {"(public: virtual struct HWND__ * __cdecl CImmersiveTaskItem::GetWindow(void))"},
+            // public: virtual struct HWND__ * __cdecl CImmersiveTaskItem::GetWindow(void)
+            {"Taskbar.dll!?GetWindow@CImmersiveTaskItem@@UEAAPEAUHWND__@@XZ"},
             (void**)&CImmersiveTaskItem_GetWindow_Original,
         },
         {
-            {"(const CImmersiveTaskItem::`vftable'{for `ITaskItem'})"},
+            // const CImmersiveTaskItem::`vftable'{for `ITaskItem'}
+            {"Taskbar.dll!??_7CImmersiveTaskItem@@6BITaskItem@@@"},
             (void**)&CImmersiveTaskItem_vftable,
         },
     };
 
-    if (!HookSymbols(taskbarModule, symbolHooks)) {
+    if (!HookSymbols(moduleName, symbolHooks)) {
         LogLine(L"HookSymbols failed");
         return;
     }

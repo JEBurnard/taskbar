@@ -1,12 +1,5 @@
-// Common code from WindHawk
-// Extracted from 
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/shared/logger_base.cpp
-// - https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-grouping.wh.cp
-// - https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mod.h
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mod.cpp
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mods_api_internal.h
-// Licence GPL-3.0-only
+// Common functionality
+// Licence GPL-3.0-only and Unlicense
 #pragma once
 
 #include <string>
@@ -15,9 +8,13 @@
 
 
 // Log a debug message
+// Based on https://github.com/ramensoftware/windhawk-mods/blob/main/src/windhawk/shared/logger_base.cpp
+// Licence GPL-3.0-only
 void LogLine(PCWSTR format, ...);
 
 // Detected window version
+// Based on https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp
+// Licence GPL-3.0-only
 enum class WinVersion 
 {
     Unsupported,
@@ -27,9 +24,13 @@ enum class WinVersion
 };
 
 // Detect windows version from explorer
+// Based on https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp
+// Licence GPL-3.0-only
 WinVersion GetExplorerVersion();
 
 // A hook to perform
+// Based on https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mods_api_internal.h
+// Licence GPL-3.0-only
 typedef struct tagWH_SYMBOL_HOOK
 {
     // symbol to hook
@@ -43,4 +44,5 @@ typedef struct tagWH_SYMBOL_HOOK
 } SYMBOL_HOOK;
 
 // Perform the hooks
-bool HookSymbols(HMODULE module, std::vector<SYMBOL_HOOK> &symbolHooks);
+// Unlicense 
+bool HookSymbols(std::string& moduleName, std::vector<SYMBOL_HOOK> &symbolHooks);

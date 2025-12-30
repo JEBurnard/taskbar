@@ -160,7 +160,6 @@
     <ClCompile Include="..\minhook\src\hook.c" />
     <ClCompile Include="..\minhook\src\trampoline.c" />
     <ClCompile Include="common.cpp" />
-    <ClCompile Include="functions.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="taskbar_middle_click.cpp" />
   </ItemGroup>
@@ -174,7 +173,6 @@
     <ClInclude Include="..\minhook\src\hde\table64.h" />
     <ClInclude Include="..\minhook\src\trampoline.h" />
     <ClInclude Include="common.h" />
-    <ClInclude Include="functions.h" />
     <ClInclude Include="taskbar.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
