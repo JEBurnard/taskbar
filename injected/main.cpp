@@ -1,6 +1,10 @@
+// The dll that will be injected into the explorer.exe process.
+// Hooks functions in the process to customise explorer behaviour.
+
 #include <Windows.h>
 #include <string>
 #include <algorithm>
+#include <DbgHelp.h>
 
 #include "MinHook.h"
 #include "taskbar.h"
@@ -8,6 +12,8 @@
 
 BOOL WINAPI DllMain(HINSTANCE modules, DWORD reason, LPVOID reserved)
 {
+	LogLine(L"injected.dll: DllMain called, reason: %d", reason);
+
 	// get the process name that is calling us
 	wchar_t pName[MAX_PATH];
 	GetModuleFileNameW(NULL, pName, MAX_PATH);
@@ -37,6 +43,8 @@ BOOL WINAPI DllMain(HINSTANCE modules, DWORD reason, LPVOID reserved)
 
 		// setup mods
 		setup_taskbar_middle_click();
+
+		// todo: keep running?
 	}
 	else if (reason == DLL_PROCESS_DETACH)
 	{

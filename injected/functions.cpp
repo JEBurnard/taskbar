@@ -1,5 +1,3 @@
-// Based on: https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/functions.cpp
-// Licence GPL-3.0-only
 #include "functions.h"
 
 #include <Windows.h>
@@ -9,11 +7,11 @@
 
 namespace
 {
-    // Source:
-    // https://github.com/dotnet-bot/corert/blob/8928dfd66d98f40017ec7435df1fbada113656a8/src/Native/Runtime/windows/PalRedhawkCommon.cpp#L78
-    //
     // Given the OS handle of a loaded module, compute the upper and lower virtual
     // address bounds (inclusive).
+    //
+    // Source: https://github.com/dotnet-bot/corert/blob/8928dfd66d98f40017ec7435df1fbada113656a8/src/Native/Runtime/windows/PalRedhawkCommon.cpp#L78
+    // Licence: MIT
     void PalGetModuleBounds(HANDLE hOsHandle, _Out_ BYTE** ppLowerBound, _Out_ BYTE** ppUpperBound) 
     {
         BYTE* pbModule = (BYTE*)hOsHandle;
@@ -38,31 +36,13 @@ namespace Functions
 {
     std::vector<std::wstring_view> SplitStringToViews(std::wstring_view s, WCHAR delim) 
     {
-        // https://stackoverflow.com/a/48403210
         auto view = s | std::views::split(delim) | std::views::transform([](auto&& rng) 
         {
             return std::wstring_view(rng.data(), rng.size());
         });
         return std::vector<std::wstring_view>(view.begin(), view.end());
     }
-    
-    // Based on:
-    // https://github.com/dotnet-bot/corert/blob/8928dfd66d98f40017ec7435df1fbada113656a8/src/Native/Runtime/windows/PalRedhawkCommon.cpp#L109
-    //
-    // Reads through the PE header of the specified module, and returns
-    // the module's matching PDB's signature GUID and age by
-    // fishing them out of the last IMAGE_DEBUG_DIRECTORY of type
-    // IMAGE_DEBUG_TYPE_CODEVIEW.  Used when sending the ModuleLoad event
-    // to help profilers find matching PDBs for loaded modules.
-    //
-    // Arguments:
-    //
-    // [in] hOsHandle - OS Handle for module from which to get PDB info
-    // [out] pGuidSignature - PDB's signature GUID to be placed here
-    // [out] pdwAge - PDB's age to be placed here
-    //
-    // This is a simplification of similar code in desktop CLR's GetCodeViewInfo
-    // in eventtrace.cpp.
+
     bool ModuleGetPDBInfo(HANDLE hOsHandle, _Out_ GUID* pGuidSignature, _Out_ DWORD* pdwAge) 
     {
         // Zero-init [out]-params

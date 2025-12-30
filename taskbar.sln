@@ -3,14 +3,16 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36414.22
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "taskbar", "taskbar\taskbar.vcxproj", "{1823C17E-5739-4857-9E2B-54B8B03F5D00}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8EC462FD-D22E-90A8-E5CE-7E832BA40C5D}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
-		readme.md = readme.md
 		licence.md = licence.md
+		readme.md = readme.md
 	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "launcher", "launcher\launcher.vcxproj", "{6AD08258-0ABD-4F80-B2A0-8E1675E9EBCC}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "injected", "injected\injected.vcxproj", "{1823C17E-5739-4857-9E2B-54B8B03F5D00}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -20,6 +22,14 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6AD08258-0ABD-4F80-B2A0-8E1675E9EBCC}.Debug|x64.ActiveCfg = Debug|x64
+		{6AD08258-0ABD-4F80-B2A0-8E1675E9EBCC}.Debug|x64.Build.0 = Debug|x64
+		{6AD08258-0ABD-4F80-B2A0-8E1675E9EBCC}.Debug|x86.ActiveCfg = Debug|Win32
+		{6AD08258-0ABD-4F80-B2A0-8E1675E9EBCC}.Debug|x86.Build.0 = Debug|Win32
+		{6AD08258-0ABD-4F80-B2A0-8E1675E9EBCC}.Release|x64.ActiveCfg = Release|x64
+		{6AD08258-0ABD-4F80-B2A0-8E1675E9EBCC}.Release|x64.Build.0 = Release|x64
+		{6AD08258-0ABD-4F80-B2A0-8E1675E9EBCC}.Release|x86.ActiveCfg = Release|Win32
+		{6AD08258-0ABD-4F80-B2A0-8E1675E9EBCC}.Release|x86.Build.0 = Release|Win32
 		{1823C17E-5739-4857-9E2B-54B8B03F5D00}.Debug|x64.ActiveCfg = Debug|x64
 		{1823C17E-5739-4857-9E2B-54B8B03F5D00}.Debug|x64.Build.0 = Debug|x64
 		{1823C17E-5739-4857-9E2B-54B8B03F5D00}.Debug|x86.ActiveCfg = Debug|Win32

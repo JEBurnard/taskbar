@@ -209,7 +209,8 @@ void setup_taskbar_middle_click()
 
     std::vector<SYMBOL_HOOK> symbolHooks = {
         {
-            {R"(public: virtual long __cdecl CTaskListWnd::HandleClick(struct ITaskGroup *,struct ITaskItem *,struct winrt::Windows::System::LauncherOptions const &))"},
+            //public: virtual long __cdecl CTaskListWnd::HandleClick(struct ITaskGroup *,struct ITaskItem *,struct winrt::Windows::System::LauncherOptions const &)
+            {"Taskbar.dll!?HandleClick@CTaskListWnd@@UEAAJPEAUITaskGroup@@PEAUITaskItem@@AEBULauncherOptions@System@Windows@winrt@@@Z"},
             (void**)& CTaskListWnd_HandleClick_Original,
             CTaskListWnd_HandleClick_Hook,
         },

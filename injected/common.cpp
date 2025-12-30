@@ -16,6 +16,7 @@
 #include <vector>
 #include <functional>
 #include <filesystem>
+#include <DbgHelp.h>
 
 #include "functions.h"
 #include "MinHook.h"
@@ -39,7 +40,7 @@ namespace
         }
 
         // Leave only a single trailing newline.
-        if (buffer[len + 1] == L'\n' && buffer[len + 2] == L'\n') 
+        if (len >= 2 && len < 1023 && buffer[len + 1] == L'\n' && buffer[len + 2] == L'\n') 
         {
             buffer[len + 2] = L'\0';
         }
@@ -83,14 +84,14 @@ namespace
         MH_STATUS status = MH_CreateHookEx(hookIdent, targetFunction, hookFunction, originalFunction);
         if (status != MH_OK) 
         {
-            wprintf(L"Error: MH_CreateHookEx returned %d", status);
+            LogLine(L"Error: MH_CreateHookEx returned %d", status);
             return false;
         }
 
         status = MH_QueueEnableHookEx(hookIdent, targetFunction);
         if (status != MH_OK) 
         {
-            wprintf(L"Error: MH_QueueEnableHookEx returned %d", status);
+            LogLine(L"Error: MH_QueueEnableHookEx returned %d", status);
             return false;
         }
 
@@ -119,7 +120,7 @@ WinVersion GetExplorerVersion()
     WORD build = HIWORD(fixedFileInfo->dwFileVersionLS);
     WORD qfe = LOWORD(fixedFileInfo->dwFileVersionLS);
 
-    wprintf(L"Version: %u.%u.%u.%u", major, minor, build, qfe);
+    LogLine(L"Version: %u.%u.%u.%u", major, minor, build, qfe);
 
     switch (major) {
     case 10:
@@ -145,7 +146,7 @@ bool HookSymbols(HMODULE module, std::vector<SYMBOL_HOOK>& symbolHooks)
 {
     if (!module) 
     {
-        wprintf(L"Module handle is null");
+        LogLine(L"Module handle is null");
         return false;
     }
 
@@ -159,21 +160,73 @@ bool HookSymbols(HMODULE module, std::vector<SYMBOL_HOOK>& symbolHooks)
     DWORD pdbAge;
     if (!Functions::ModuleGetPDBInfo(module, &pdbGuid, &pdbAge))
     {
-        wprintf(L"Failed to get module debug information");
+        LogLine(L"Failed to get module debug information");
         return false;
     }
 
     // todo: get the symbol file from a symbol server or disk? ...
-    // 
+    // ...
+    
+    // todo: cleanup / RAII
+
+    // initalise symbol resolver
+    //SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+    //HANDLE hProcess = INVALID_HANDLE_VALUE;
+    HANDLE hCurrentProcess = GetCurrentProcess();
+    /*if (!DuplicateHandle(hCurrentProcess, hCurrentProcess, hCurrentProcess, &hProcess, 0, FALSE, DUPLICATE_SAME_ACCESS))
+    {
+        LogLine(L"DuplicateHandle returned error: %d", GetLastError());
+        return FALSE;
+    }*/
+    //if (!SymInitialize(hProcess, NULL, TRUE))
+    if (!SymInitialize(hCurrentProcess, NULL, FALSE))
+    {
+        LogLine(L"SymInitialize returned error: %d", GetLastError());
+        return FALSE;
+    }
+
+    // todo: pass in instead
+    std::string moduleName = "taskbar.dll";
+
+    // load symbols for the module
+    //if (!SymLoadModuleEx(hProcess, NULL, moduleName.c_str(), NULL, 0, 0, NULL, 0))
+    if (!SymLoadModuleEx(hCurrentProcess, NULL, moduleName.c_str(), NULL, 0, 0, NULL, 0))
+    {
+        LogLine(L"SymLoadModuleEx returned error: %d", GetLastError());
+        return false;
+    }
 
     try 
     {
         for (auto symbolHook : symbolHooks)
         {
-            auto symbolAddress = nullptr;
-            // todo: need to find function address from debug symbols
-            // (as we are hooking non-exported functions)
+            // lookup this symbol
+            /*ULONG64 buffer[(sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(WCHAR) + sizeof(ULONG64) - 1) / sizeof(ULONG64)];
+            PSYMBOL_INFO pSymbol = (PSYMBOL_INFO)buffer;
+            pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+            pSymbol->MaxNameLen = MAX_SYM_NAME;*/
+            struct CFullSymbol : SYMBOL_INFO {
+                CHAR szRestOfName[512];
+            } symbol;
+            ZeroMemory(&symbol, sizeof(symbol));
+            symbol.SizeOfStruct = sizeof(SYMBOL_INFO);
+            symbol.MaxNameLen = sizeof(symbol.szRestOfName) / sizeof(symbol.szRestOfName[0]);
 
+            // todo: need module name and symbol
+            // eg "taskbar.dll!<symbol>
+            LogLine(L"Finding symbol: %S", symbolHook.symbol.c_str());
+
+            // todo: this does not work.. = error 126 = cannot find symbol
+            // = need to change the symbol strings to match what is in taskbar.dll.pdb
+            //if (!SymFromName(hProcess, symbolHook.symbol.c_str(), pSymbol))
+            if (!SymFromName(hCurrentProcess, symbolHook.symbol.c_str(), &symbol))
+            {
+                LogLine(L"SymFromName returned error: %d", GetLastError());
+                return false;
+            }
+
+            //auto symbolAddress = (void*)pSymbol->Address;
+            auto symbolAddress = (void*)symbol.Address;
             if (!SetFunctionHook(symbolAddress, symbolHook.pHookFunction, symbolHook.pOriginalFunction))
             {
                 return false;
@@ -184,7 +237,7 @@ bool HookSymbols(HMODULE module, std::vector<SYMBOL_HOOK>& symbolHooks)
     }
     catch (const std::exception& e) 
     {
-        wprintf(L"Error: HookSymbols threw exception: %hs", e.what());
+        LogLine(L"Error: HookSymbols threw exception: %hs", e.what());
     }
 
     return false;
