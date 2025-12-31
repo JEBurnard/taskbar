@@ -10,53 +10,79 @@
 #include "taskbar.h"
 #include "common.h"
 
-BOOL WINAPI DllMain(HINSTANCE modules, DWORD reason, LPVOID reserved)
+BOOL WINAPI DllMain(HINSTANCE moduleHandle, DWORD reason, LPVOID reserved)
 {
 	LogLine(L"injected.dll: DllMain called, reason: %d", reason);
 
-	// get the process name that is calling us
-	wchar_t pName[MAX_PATH];
-	GetModuleFileNameW(NULL, pName, MAX_PATH);
-	auto name = std::wstring(pName);
-	std::transform(name.begin(), name.end(), name.begin(), tolower);
-	auto isExplorer = name.ends_with(L"explorer.exe");
+	// always return false, so this dll is automatically unloaded on return
+	const BOOL ret = FALSE;
 
-	// we only hook (a single thread) in explorer
-	if (isExplorer && reason == DLL_PROCESS_ATTACH)
+	// only execute on dll attach (load library)
+	if (reason != DLL_PROCESS_ATTACH)
 	{
-		// disable thread attach/detach calls
-		DisableThreadLibraryCalls(modules);
-
-		// initalise minhook
-		LogLine(L"Initalising minhook");
-		if (MH_Initialize() != MH_OK)
-		{
-			LogLine(L"Failed to initalise minhook");
-			return FALSE;
-		}
-
-		// setup mods
-		bool modsSetupOk = true;
-		modsSetupOk &= setup_taskbar_middle_click();
-
-		// all setup ok?
-		if (modsSetupOk)
-		{
-			// keep running untill signalled
-			LogLine(L"Waiting for exit signal");
-			WaitForExitSignal();
-		}
-
-		// clean up
-		LogLine(L"Uninitalising minhook");
-		if (MH_Uninitialize() != MH_OK)
-		{
-			LogLine(L"Failed to clean up minhook");
-		}
-
-		// return false to unload this dll
-		return FALSE;
+		return ret;
 	}
 
-	return TRUE;
+	// disable thread attach/detach calls
+	DisableThreadLibraryCalls(moduleHandle);
+
+	// get the process name that is calling us
+	wchar_t processPathBuffer[MAX_PATH];
+	GetModuleFileNameW(NULL, processPathBuffer, MAX_PATH);
+	auto processPath = std::wstring(processPathBuffer);
+	std::transform(processPath.begin(), processPath.end(), processPath.begin(), tolower);
+	auto isExplorer = processPath.ends_with(L"explorer.exe");
+	
+	// we only hook (a single thread) in explorer
+	if (!isExplorer)
+	{
+		return ret;
+	}
+
+	// get the full path of this module
+	wchar_t modulePathBuffer[MAX_PATH];
+	GetModuleFileNameW(moduleHandle, modulePathBuffer, MAX_PATH);
+	auto modulePath = std::wstring(modulePathBuffer);
+
+	// set the working directory to be the directory this module is in
+	// (needed for dbghelp symbol server libraries)
+	auto slashPos = modulePath.rfind('\\');
+	if (slashPos != std::wstring::npos)
+	{
+		auto moduleDirectory = modulePath.substr(0, slashPos);
+		LogLine(L"Changing directory to %s", moduleDirectory.c_str());
+		if (!SetCurrentDirectory(moduleDirectory.c_str()))
+		{
+			LogLine(L"Failed to change directory");
+		}
+	}
+
+	// initalise minhook
+	LogLine(L"Initalising minhook");
+	if (MH_Initialize() != MH_OK)
+	{
+		LogLine(L"Failed to initalise minhook");
+		return ret;
+	}
+
+	// setup mods
+	bool modsSetupOk = true;
+	modsSetupOk &= setup_taskbar_middle_click();
+
+	// all setup ok?
+	if (modsSetupOk)
+	{
+		// keep running untill signalled
+		LogLine(L"Waiting for exit signal");
+		WaitForExitSignal();
+	}
+
+	// clean up
+	LogLine(L"Uninitalising minhook");
+	if (MH_Uninitialize() != MH_OK)
+	{
+		LogLine(L"Failed to clean up minhook");
+	}
+
+	return ret;
 }

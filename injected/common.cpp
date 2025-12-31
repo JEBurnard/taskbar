@@ -145,7 +145,7 @@ WinVersion GetExplorerVersion()
     return WinVersion::Unsupported;
 }
 
-bool HookSymbols(std::string& moduleName, std::vector<SYMBOL_HOOK>& symbolHooks)
+bool HookSymbols(std::string& modulePath, std::string& moduleName, std::vector<SYMBOL_HOOK>& symbolHooks)
 {
     if (symbolHooks.size() == 0)
     {
@@ -187,7 +187,7 @@ bool HookSymbols(std::string& moduleName, std::vector<SYMBOL_HOOK>& symbolHooks)
         }
 
         // load symbols for the module
-        if (!SymLoadModuleEx(hCurrentProcess, NULL, moduleName.c_str(), NULL, 0, 0, NULL, 0))
+        if (!SymLoadModuleEx(hCurrentProcess, NULL, modulePath.c_str(), moduleName.c_str(), 0, 0, NULL, 0))
         {
             LogLine(L"Error: SymLoadModuleEx returned error: %d", GetLastError());
             break;

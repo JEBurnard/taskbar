@@ -202,6 +202,7 @@ bool setup_taskbar_middle_click()
 
     // Taskbar.dll hooks
     std::string moduleName = "Taskbar.dll";
+    std::string modulePath = "C:\\Windows\\System32\\Taskbar.dll";
     std::vector<SYMBOL_HOOK> symbolHooks = {
         {
             // public: virtual long __cdecl CTaskListWnd::HandleClick(struct ITaskGroup *,struct ITaskItem *,struct winrt::Windows::System::LauncherOptions const &)
@@ -268,7 +269,7 @@ bool setup_taskbar_middle_click()
         },
     };
 
-    return HookSymbols(moduleName, symbolHooks);
+    return HookSymbols(modulePath, moduleName, symbolHooks);
 
     // not needed?:
     /*

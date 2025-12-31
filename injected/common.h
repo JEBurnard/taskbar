@@ -45,7 +45,7 @@ typedef struct tagWH_SYMBOL_HOOK
 
 // Perform the hooks
 // Unlicense 
-bool HookSymbols(std::string& moduleName, std::vector<SYMBOL_HOOK> &symbolHooks);
+bool HookSymbols(std::string& modulePath, std::string& moduleName, std::vector<SYMBOL_HOOK> &symbolHooks);
 
 // Wait for the launcher to signal that the injected thread should exit.
 // Unlicence
