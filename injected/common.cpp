@@ -100,6 +100,135 @@ namespace
 
         return true;
     }
+
+    // Functions dynamicially loaded from DbgHelp dll
+    // (dynamically loaded, so the correct version can be loaded, which needs to be in the same directory
+    // as srcsrv.dll and symsrv.dll to use a symbol server to get the debug symbols)
+    // Unlicence
+    class DbgHlp
+    {
+    public:
+        // default constructor - all handles and pointers are null
+        DbgHlp() = default;
+
+        // destructor - free 
+        ~DbgHlp()
+        {
+            cleanup();
+        }
+
+        // dynamically load the dbghelp library (from the current directory)
+        // calls LoadLibrary which is "unsafe" to call in DllMain, but works...
+        bool load()
+        {
+            // get the current directory
+            wchar_t currentDirectoryBuffer[MAX_PATH];
+            if (!GetCurrentDirectoryW(MAX_PATH, currentDirectoryBuffer))
+            {
+                LogLine(L"Failed to get current directory: %d", GetLastError());
+                cleanup();
+                return false;
+            }
+            auto currentDirectory = std::wstring(currentDirectoryBuffer);
+
+            auto modulePath = currentDirectory + L"\\DbgHelp.dll";
+            moduleHandle = LoadLibraryW(modulePath.c_str());
+            if (moduleHandle == NULL)
+            {
+                LogLine(L"Failed to load %s: %d", modulePath.c_str(), GetLastError());
+                cleanup();
+                return false;
+            }
+
+            SymSetOptions = (SymSetOptions_t)GetProcAddress(moduleHandle, "SymSetOptions");
+            if (SymSetOptions == NULL)
+            {
+                LogLine(L"Failed to load dbghelp.dll!SymSetOptions: %d", GetLastError());
+                cleanup();
+                return false;
+            }
+
+            SymInitialize = (SymInitialize_t)GetProcAddress(moduleHandle, "SymInitialize");
+            if (SymInitialize == NULL)
+            {
+                LogLine(L"Failed to load dbghelp.dll!SymInitialize: %d", GetLastError());
+                cleanup();
+                return false;
+            }
+
+            SymSetSearchPath = (SymSetSearchPath_t)GetProcAddress(moduleHandle, "SymSetSearchPath");
+            if (SymSetSearchPath == NULL)
+            {
+                LogLine(L"Failed to load dbghelp.dll!SymSetSearchPath: %d", GetLastError());
+                cleanup();
+                return false;
+            }
+
+            SymLoadModuleEx = (SymLoadModuleEx_t)GetProcAddress(moduleHandle, "SymLoadModuleEx");
+            if (SymLoadModuleEx == NULL)
+            {
+                LogLine(L"Failed to load dbghelp.dll!SymLoadModuleEx: %d", GetLastError());
+                cleanup();
+                return false;
+            }
+
+            SymFromName = (SymFromName_t)GetProcAddress(moduleHandle, "SymFromName");
+            if (SymFromName == NULL)
+            {
+                LogLine(L"Failed to load dbghelp.dll!SymFromName: %d", GetLastError());
+                cleanup();
+                return false;
+            }
+
+            SymCleanup = (SymCleanup_t)GetProcAddress(moduleHandle, "SymCleanup");
+            if (SymCleanup == NULL)
+            {
+                LogLine(L"Failed to load dbghelp.dll!SymCleanup: %d", GetLastError());
+                cleanup();
+                return false;
+            }
+
+            return true;
+        }
+
+    private:
+        void cleanup()
+        {
+            if (moduleHandle != NULL)
+            {
+                FreeLibrary(moduleHandle);
+            }
+            SymSetOptions = NULL;
+            SymInitialize = NULL;
+            SymSetSearchPath = NULL;
+            SymLoadModuleEx = NULL;
+            SymFromName = NULL;
+            SymCleanup = NULL;
+        }
+
+        // module handle
+        HINSTANCE moduleHandle = NULL;
+
+    public:
+        // function pointers
+        typedef DWORD(__stdcall* SymSetOptions_t)(DWORD SymOptions);
+        SymSetOptions_t SymSetOptions = NULL;
+
+        typedef BOOL(__stdcall* SymInitialize_t)(HANDLE hProcess, PCSTR UserSearchPath, BOOL fInvadeProcess);
+        SymInitialize_t SymInitialize = NULL;
+
+        typedef BOOL(__stdcall* SymSetSearchPath_t)(HANDLE hProcess, PCSTR SearchPath);
+        SymSetSearchPath_t SymSetSearchPath = NULL;
+
+        typedef DWORD64(__stdcall* SymLoadModuleEx_t)(HANDLE hProcess, HANDLE hFile, PCSTR ImageName, PCSTR ModuleName, DWORD64 BaseOfDll, DWORD DllSize,PMODLOAD_DATA Data, DWORD Flags);
+        SymLoadModuleEx_t SymLoadModuleEx = NULL;
+
+        typedef BOOL(__stdcall* SymFromName_t)(HANDLE hProcess, PCSTR Name, PSYMBOL_INFO Symbol);
+        SymFromName_t SymFromName = NULL;
+
+        typedef BOOL(__stdcall* SymCleanup_t)(HANDLE hProcess);
+        SymCleanup_t SymCleanup = NULL;
+    };
 }
 
 void LogLine(PCWSTR format, ...) 
@@ -152,6 +281,13 @@ bool HookSymbols(std::string& modulePath, std::string& moduleName, std::vector<S
         return true;
     }
 
+    // dynamically load dbghelp
+    DbgHlp dbg;
+    if (!dbg.load())
+    {
+        return false;
+    }
+
     // true if all functions hooked successfully
     bool ok = false;
 
@@ -162,7 +298,11 @@ bool HookSymbols(std::string& modulePath, std::string& moduleName, std::vector<S
     do
     {
         // enable debug logs for symbol resolving
-        SymSetOptions(SYMOPT_DEBUG);
+        if (!dbg.SymSetOptions(SYMOPT_DEBUG))
+        {
+            LogLine(L"Error: SymSetOptions returned error: %d", GetLastError());
+            break;
+        }
 
         // initalise symbol resolver
         HANDLE hCurrentProcess = GetCurrentProcess();
@@ -171,23 +311,22 @@ bool HookSymbols(std::string& modulePath, std::string& moduleName, std::vector<S
             LogLine(L"Error: DuplicateHandle returned error: %d", GetLastError());
             break;
         }
-        if (!SymInitialize(hCurrentProcess, NULL, FALSE))
+        if (!dbg.SymInitialize(hCurrentProcess, NULL, FALSE))
         {
             LogLine(L"Error: SymInitialize returned error: %d", GetLastError());
             break;
         }
-
         // load symbols from microsoft symbol server (caches in the "sym" folder in the working directory)
         // needs SymSrv.dll and SrcSrv.dll to be in the same directory as (the dyamically loaded) DbgHelp.dll
         std::string symbolServer = "srv*https://msdl.microsoft.com/download/symbols";
-        if (!SymSetSearchPath(hCurrentProcess, symbolServer.c_str()))
+        if (!dbg.SymSetSearchPath(hCurrentProcess, symbolServer.c_str()))
         {
             LogLine(L"Error: SymSetSearchPath returned error: %d", GetLastError());
             break;
         }
 
         // load symbols for the module
-        if (!SymLoadModuleEx(hCurrentProcess, NULL, modulePath.c_str(), moduleName.c_str(), 0, 0, NULL, 0))
+        if (!dbg.SymLoadModuleEx(hCurrentProcess, NULL, modulePath.c_str(), moduleName.c_str(), 0, 0, NULL, 0))
         {
             LogLine(L"Error: SymLoadModuleEx returned error: %d", GetLastError());
             break;
@@ -215,7 +354,7 @@ bool HookSymbols(std::string& modulePath, std::string& moduleName, std::vector<S
                 }
 
                 // lookup the symbol
-                if (!SymFromName(hCurrentProcess, symbolHook.symbol.c_str(), &symbol))
+                if (!dbg.SymFromName(hCurrentProcess, symbolHook.symbol.c_str(), &symbol))
                 {
                     LogLine(L"Error: SymFromName returned error: %d", GetLastError());
                     break;
@@ -247,7 +386,7 @@ bool HookSymbols(std::string& modulePath, std::string& moduleName, std::vector<S
     // cleaup
     if (hProcess != INVALID_HANDLE_VALUE)
     {
-        (void)SymCleanup(hProcess);
+        (void)dbg.SymCleanup(hProcess);
         (void)CloseHandle(hProcess);
     }
 
