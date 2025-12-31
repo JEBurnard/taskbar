@@ -247,3 +247,28 @@ bool HookSymbols(std::string& moduleName, std::vector<SYMBOL_HOOK>& symbolHooks)
 
     return ok;
 }
+
+void WaitForExitSignal()
+{
+    // loop untill signalled: check for named pipe to exist
+    const std::wstring pipeName = L"\\\\.\\pipe\\takbar-close-thread-pipe";
+
+    while (true)
+    {
+        // query first matching file
+        WIN32_FIND_DATAW findData;
+        HANDLE hFind = FindFirstFileW(pipeName.c_str(), &findData);
+
+        // found? (not error nor found)
+        if (hFind != INVALID_HANDLE_VALUE)
+        {
+            // found, exit loop
+            FindClose(hFind);
+            break;
+        }
+
+        // yield before next call
+        // (1 second wait to avoid a tight loop)
+        Sleep(1000);
+    }
+}

@@ -44,9 +44,8 @@ BOOL WINAPI DllMain(HINSTANCE modules, DWORD reason, LPVOID reserved)
 		// setup mods
 		setup_taskbar_middle_click();
 
-		// keep running untill signalled: check for named pipe to exist
-		const std::wstring pipeName = L"\\\\.\\pipe\\takbar-close-thread-pipe";
-		// todo: here
+		// keep running untill signalled
+		WaitForExitSignal();
 	}
 	else if (reason == DLL_PROCESS_DETACH)
 	{
