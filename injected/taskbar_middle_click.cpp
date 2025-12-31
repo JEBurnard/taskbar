@@ -191,13 +191,13 @@ long WINAPI CTaskBand_Launch_Hook(LPVOID pThis, LPVOID taskGroup, LPVOID param2,
 
 
 // Entry point for setting up
-void setup_taskbar_middle_click()
+bool setup_taskbar_middle_click()
 {
     auto winVersion = GetExplorerVersion();
     if (winVersion == WinVersion::Unsupported) 
     {
         LogLine(L"Unsupported Windows version");
-        return;
+        return false;
     }
 
     // Taskbar.dll hooks
@@ -268,10 +268,7 @@ void setup_taskbar_middle_click()
         },
     };
 
-    if (!HookSymbols(moduleName, symbolHooks)) {
-        LogLine(L"HookSymbols failed");
-        return;
-    }
+    return HookSymbols(moduleName, symbolHooks);
 
     // not needed?:
     /*

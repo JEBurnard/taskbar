@@ -195,6 +195,7 @@ bool HookSymbols(std::string& moduleName, std::vector<SYMBOL_HOOK>& symbolHooks)
 
         try
         {
+            auto symbolsHookedSuccessfully = 0;
             for (auto symbolHook : symbolHooks)
             {
                 // create store for symbol lookup
@@ -226,11 +227,16 @@ bool HookSymbols(std::string& moduleName, std::vector<SYMBOL_HOOK>& symbolHooks)
                 {
                     break;
                 }
+
+                symbolsHookedSuccessfully++;
             }
 
-            // all hooked successfully
-            LogLine(L"All symbols hooked successfully");
-            ok = true;
+            // all hooked successfully?
+            if (symbolsHookedSuccessfully == symbolHooks.size())
+            {
+                LogLine(L"All symbols hooked successfully");
+                ok = true;
+            }
         }
         catch (const std::exception& e)
         {

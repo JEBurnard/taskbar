@@ -22,13 +22,7 @@ BOOL WINAPI DllMain(HINSTANCE modules, DWORD reason, LPVOID reserved)
 	auto isExplorer = name.ends_with(L"explorer.exe");
 
 	// we only hook (a single thread) in explorer
-	if (!isExplorer)
-	{
-		// inited ok (nothing to do)
-		return TRUE;
-	}
-
-	if (reason == DLL_PROCESS_ATTACH)
+	if (isExplorer && reason == DLL_PROCESS_ATTACH)
 	{
 		// disable thread attach/detach calls
 		DisableThreadLibraryCalls(modules);
@@ -42,21 +36,26 @@ BOOL WINAPI DllMain(HINSTANCE modules, DWORD reason, LPVOID reserved)
 		}
 
 		// setup mods
-		setup_taskbar_middle_click();
+		bool modsSetupOk = true;
+		modsSetupOk &= setup_taskbar_middle_click();
 
-		// keep running untill signalled
-		WaitForExitSignal();
-	}
-	else if (reason == DLL_PROCESS_DETACH)
-	{
+		// all setup ok?
+		if (modsSetupOk)
+		{
+			// keep running untill signalled
+			LogLine(L"Waiting for exit signal");
+			WaitForExitSignal();
+		}
 
 		// clean up
 		LogLine(L"Uninitalising minhook");
 		if (MH_Uninitialize() != MH_OK)
 		{
 			LogLine(L"Failed to clean up minhook");
-			return FALSE;
 		}
+
+		// return false to unload this dll
+		return FALSE;
 	}
 
 	return TRUE;
