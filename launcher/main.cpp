@@ -121,12 +121,12 @@ int main()
 	} while (Process32Next(snapshot.get(), &process));
 
 	// did we find explorer.exe?
-	if (INVALID_PROCESS_ID == MAXDWORD)
+	if (explorerProcessId == INVALID_PROCESS_ID)
 	{
 		// failed to find
 		// because we could not enuperate all processes?
 		DWORD dwError = GetLastError();
-		if (dwError != ERROR_NO_MORE_FILES)
+		if (dwError == ERROR_NO_MORE_FILES)
 		{
 			std::cout << "Failed to enumerate all processes" << std::endl;
 		}
