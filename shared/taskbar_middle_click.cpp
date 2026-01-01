@@ -14,117 +14,116 @@
 
 namespace 
 {
+    // group being handled in a click
+    LPVOID g_pCTaskListWndHandlingClick = nullptr;
 
-// group being handled in a click
-LPVOID g_pCTaskListWndHandlingClick = nullptr;
+    // button group being handled in a click
+    LPVOID g_pCTaskListWndTaskBtnGroup = nullptr;
 
-// button group being handled in a click
-LPVOID g_pCTaskListWndTaskBtnGroup = nullptr;
+    // task item being handled in a click
+    int g_CTaskListWndTaskItemIndex = -1;
 
-// task item being handled in a click
-int g_CTaskListWndTaskItemIndex = -1;
-
-// click action being performed in a click 
-int g_CTaskListWndClickAction = -1;
-
-
-// Orignal hooked functions
-
-void* CImmersiveTaskItem_vftable;
-
-using CTaskListWnd_HandleClick_t = long(WINAPI*)(
-    LPVOID pThis,
-    LPVOID,         // ITaskGroup *
-    LPVOID,         // ITaskItem *
-    LPVOID          // winrt::Windows::System::LauncherOptions const &
-);
-CTaskListWnd_HandleClick_t CTaskListWnd_HandleClick_Original;
-
-using CTaskListWnd__HandleClick_t = void(WINAPI*)(
-    LPVOID pThis,
-    LPVOID,         // ITaskBtnGroup *
-    int,
-    int,            // enum CTaskListWnd::eCLICKACTION
-    int,
-    int
-);
-CTaskListWnd__HandleClick_t CTaskListWnd__HandleClick_Original;
-
-using CTaskBand_Launch_t = long(WINAPI*)(
-    LPVOID pThis,
-    LPVOID,         // ITaskGroup *
-    LPVOID,         // tagPOINT const &
-    int             // enum LaunchFromTaskbarOptions
-);
-CTaskBand_Launch_t CTaskBand_Launch_Original;
-
-using CTaskListWnd_GetActiveBtn_t = HRESULT(WINAPI*)(
-    LPVOID pThis,
-    LPVOID*,        // ITaskGroup **
-    int*
-);
-CTaskListWnd_GetActiveBtn_t CTaskListWnd_GetActiveBtn_Original;
-
-using CTaskListWnd_ProcessJumpViewCloseWindow_t = void(WINAPI*)(
-    LPVOID pThis,
-    HWND,
-    LPVOID,         // struct ITaskGroup *
-    HMONITOR
-);
-CTaskListWnd_ProcessJumpViewCloseWindow_t CTaskListWnd_ProcessJumpViewCloseWindow_Original;
-
-using CTaskBand__EndTask_t = void(WINAPI*)(
-    LPVOID pThis,
-    HWND hWnd,
-    BOOL bForce
-);
-CTaskBand__EndTask_t CTaskBand__EndTask_Original;
-
-using CTaskBtnGroup_GetGroupType_t = int(WINAPI*)(LPVOID pThis);
-CTaskBtnGroup_GetGroupType_t CTaskBtnGroup_GetGroupType_Original;
-
-using CTaskBtnGroup_GetGroup_t = LPVOID(WINAPI*)(LPVOID pThis);
-CTaskBtnGroup_GetGroup_t CTaskBtnGroup_GetGroup_Original;
-
-using CTaskBtnGroup_GetTaskItem_t = void* (WINAPI*)(LPVOID pThis, int);
-CTaskBtnGroup_GetTaskItem_t CTaskBtnGroup_GetTaskItem_Original;
-
-using CWindowTaskItem_GetWindow_t = HWND(WINAPI*)(LPVOID pThis);
-CWindowTaskItem_GetWindow_t CWindowTaskItem_GetWindow_Original;
-
-using CImmersiveTaskItem_GetWindow_t = HWND(WINAPI*)(LPVOID pThis);
-CImmersiveTaskItem_GetWindow_t CImmersiveTaskItem_GetWindow_Original;
+    // click action being performed in a click 
+    int g_CTaskListWndClickAction = -1;
 
 
-// Replacement functions
+    // Orignal hooked functions
 
-long WINAPI CTaskListWnd_HandleClick_Hook(LPVOID pThis, LPVOID param1, LPVOID param2, LPVOID param3) 
-{
-    LogLine(L"CTaskListWnd_HandleClick_Hook");
+    void* CImmersiveTaskItem_vftable;
 
-    g_pCTaskListWndHandlingClick = pThis;
-    long ret = CTaskListWnd_HandleClick_Original(pThis, param1, param2, param3);
-    g_pCTaskListWndHandlingClick = nullptr;
+    using CTaskListWnd_HandleClick_t = long(WINAPI*)(
+        LPVOID pThis,
+        LPVOID,         // ITaskGroup *
+        LPVOID,         // ITaskItem *
+        LPVOID          // winrt::Windows::System::LauncherOptions const &
+    );
+    CTaskListWnd_HandleClick_t CTaskListWnd_HandleClick_Original;
 
-    return ret;
-}
+    using CTaskListWnd__HandleClick_t = void(WINAPI*)(
+        LPVOID pThis,
+        LPVOID,         // ITaskBtnGroup *
+        int,
+        int,            // enum CTaskListWnd::eCLICKACTION
+        int,
+        int
+    );
+    CTaskListWnd__HandleClick_t CTaskListWnd__HandleClick_Original;
 
-void WINAPI CTaskListWnd__HandleClick_Hook(LPVOID pThis, LPVOID taskBtnGroup, int taskItemIndex, int clickAction, int param4, int param5) 
-{
-    LogLine(L"CTaskListWnd__HandleClick_Hook: %d", clickAction);
+    using CTaskBand_Launch_t = long(WINAPI*)(
+        LPVOID pThis,
+        LPVOID,         // ITaskGroup *
+        LPVOID,         // tagPOINT const &
+        int             // enum LaunchFromTaskbarOptions
+    );
+    CTaskBand_Launch_t CTaskBand_Launch_Original;
 
-    g_pCTaskListWndTaskBtnGroup = taskBtnGroup;
-    g_CTaskListWndTaskItemIndex = taskItemIndex;
-    g_CTaskListWndClickAction = clickAction;
+    using CTaskListWnd_GetActiveBtn_t = HRESULT(WINAPI*)(
+        LPVOID pThis,
+        LPVOID*,        // ITaskGroup **
+        int*
+    );
+    CTaskListWnd_GetActiveBtn_t CTaskListWnd_GetActiveBtn_Original;
 
-    CTaskListWnd__HandleClick_Original(pThis, taskBtnGroup, taskItemIndex, clickAction, param4, param5);
+    using CTaskListWnd_ProcessJumpViewCloseWindow_t = void(WINAPI*)(
+        LPVOID pThis,
+        HWND,
+        LPVOID,         // struct ITaskGroup *
+        HMONITOR
+    );
+    CTaskListWnd_ProcessJumpViewCloseWindow_t CTaskListWnd_ProcessJumpViewCloseWindow_Original;
 
-    g_pCTaskListWndTaskBtnGroup = nullptr;
-    g_CTaskListWndTaskItemIndex = -1;
-    g_CTaskListWndClickAction = -1;
-}
+    using CTaskBand__EndTask_t = void(WINAPI*)(
+        LPVOID pThis,
+        HWND hWnd,
+        BOOL bForce
+    );
+    CTaskBand__EndTask_t CTaskBand__EndTask_Original;
 
-long WINAPI CTaskBand_Launch_Hook(LPVOID pThis, LPVOID taskGroup, LPVOID param2, int param3) 
+    using CTaskBtnGroup_GetGroupType_t = int(WINAPI*)(LPVOID pThis);
+    CTaskBtnGroup_GetGroupType_t CTaskBtnGroup_GetGroupType_Original;
+
+    using CTaskBtnGroup_GetGroup_t = LPVOID(WINAPI*)(LPVOID pThis);
+    CTaskBtnGroup_GetGroup_t CTaskBtnGroup_GetGroup_Original;
+
+    using CTaskBtnGroup_GetTaskItem_t = void* (WINAPI*)(LPVOID pThis, int);
+    CTaskBtnGroup_GetTaskItem_t CTaskBtnGroup_GetTaskItem_Original;
+
+    using CWindowTaskItem_GetWindow_t = HWND(WINAPI*)(LPVOID pThis);
+    CWindowTaskItem_GetWindow_t CWindowTaskItem_GetWindow_Original;
+
+    using CImmersiveTaskItem_GetWindow_t = HWND(WINAPI*)(LPVOID pThis);
+    CImmersiveTaskItem_GetWindow_t CImmersiveTaskItem_GetWindow_Original;
+
+
+    // Replacement functions
+
+    long WINAPI CTaskListWnd_HandleClick_Hook(LPVOID pThis, LPVOID param1, LPVOID param2, LPVOID param3) 
+    {
+        LogLine(L"CTaskListWnd_HandleClick_Hook");
+
+        g_pCTaskListWndHandlingClick = pThis;
+        long ret = CTaskListWnd_HandleClick_Original(pThis, param1, param2, param3);
+        g_pCTaskListWndHandlingClick = nullptr;
+
+        return ret;
+    }
+
+    void WINAPI CTaskListWnd__HandleClick_Hook(LPVOID pThis, LPVOID taskBtnGroup, int taskItemIndex, int clickAction, int param4, int param5) 
+    {
+        LogLine(L"CTaskListWnd__HandleClick_Hook: %d", clickAction);
+
+        g_pCTaskListWndTaskBtnGroup = taskBtnGroup;
+        g_CTaskListWndTaskItemIndex = taskItemIndex;
+        g_CTaskListWndClickAction = clickAction;
+
+        CTaskListWnd__HandleClick_Original(pThis, taskBtnGroup, taskItemIndex, clickAction, param4, param5);
+
+        g_pCTaskListWndTaskBtnGroup = nullptr;
+        g_CTaskListWndTaskItemIndex = -1;
+        g_CTaskListWndClickAction = -1;
+    }
+
+    long WINAPI CTaskBand_Launch_Hook(LPVOID pThis, LPVOID taskGroup, LPVOID param2, int param3) 
 {
     LogLine(L"CTaskBand_Launch_Hook");
 
@@ -193,8 +192,7 @@ long WINAPI CTaskBand_Launch_Hook(LPVOID pThis, LPVOID taskGroup, LPVOID param2,
 
     return 0;
 }
-
-} // namespace
+}
 
 
 TaskbarMiddleClick::TaskbarMiddleClick()

@@ -13,33 +13,31 @@
 
 namespace
 {
-
-void WaitForExitSignal()
-{
-	// loop untill signalled: check for named pipe to exist
-	const std::wstring pipeName = L"\\\\.\\pipe\\takbar-close-thread-pipe";
-
-	while (true)
+	void WaitForExitSignal()
 	{
-		// query first matching file
-		WIN32_FIND_DATAW findData;
-		HANDLE hFind = FindFirstFileW(pipeName.c_str(), &findData);
+		// loop untill signalled: check for named pipe to exist
+		const std::wstring pipeName = L"\\\\.\\pipe\\takbar-close-thread-pipe";
 
-		// found? (not error nor found)
-		if (hFind != INVALID_HANDLE_VALUE)
+		while (true)
 		{
-			// found, exit loop
-			FindClose(hFind);
-			break;
-		}
+			// query first matching file
+			WIN32_FIND_DATAW findData;
+			HANDLE hFind = FindFirstFileW(pipeName.c_str(), &findData);
 
-		// yield before next call
-		// (1 second wait to avoid a tight loop)
-		Sleep(1000);
+			// found? (not error nor found)
+			if (hFind != INVALID_HANDLE_VALUE)
+			{
+				// found, exit loop
+				FindClose(hFind);
+				break;
+			}
+
+			// yield before next call
+			// (1 second wait to avoid a tight loop)
+			Sleep(1000);
+		}
 	}
 }
-
-} // namespace
 
 BOOL WINAPI DllMain(HINSTANCE moduleHandle, DWORD reason, LPVOID reserved)
 {

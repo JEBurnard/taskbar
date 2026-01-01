@@ -15,118 +15,116 @@
 
 namespace
 {
-
-// Hook symbols from a single module
-// todo: refactor to lookup addresses from file
-bool HookModuleSymbols(const ModuleHook moduleHook)
-{
-    // nothing to do
-    if (moduleHook.symbolHooks.size() == 0)
+    // Hook symbols from a single module
+    // todo: refactor to lookup addresses from file
+    bool HookModuleSymbols(const ModuleHook moduleHook)
     {
-        return true;
-    }
-
-    // true if all functions hooked successfully
-    bool ok = false;
-
-    // items that may require cleanup
-    HANDLE hProcess = INVALID_HANDLE_VALUE;
-
-    // while false error catching loop
-    do
-    {
-        // enable debug logs for symbol resolving
-        SymSetOptions(SYMOPT_DEBUG);
-
-        // initalise symbol resolver
-        HANDLE hCurrentProcess = GetCurrentProcess();
-        if (!DuplicateHandle(hCurrentProcess, hCurrentProcess, hCurrentProcess, &hProcess, 0, FALSE, DUPLICATE_SAME_ACCESS))
+        // nothing to do
+        if (moduleHook.symbolHooks.size() == 0)
         {
-            LogLine(L"Error: DuplicateHandle returned error: %d", GetLastError());
-            break;
-        }
-        if (!SymInitialize(hCurrentProcess, NULL, FALSE))
-        {
-            LogLine(L"Error: SymInitialize returned error: %d", GetLastError());
-            break;
+            return true;
         }
 
-        // load symbols from microsoft symbol server (caches in the "sym" folder in the working directory)
-        // needs SymSrv.dll and SrcSrv.dll to be in the same directory as (the dyamically loaded) DbgHelp.dll
-        std::string symbolServer = "srv*https://msdl.microsoft.com/download/symbols";
-        if (!SymSetSearchPath(hCurrentProcess, symbolServer.c_str()))
-        {
-            LogLine(L"Error: SymSetSearchPath returned error: %d", GetLastError());
-            break;
-        }
+        // true if all functions hooked successfully
+        bool ok = false;
 
-        // load symbols for the module
-        if (!SymLoadModuleEx(hCurrentProcess, NULL, moduleHook.modulePath.c_str(), moduleHook.moduleName.c_str(), 0, 0, NULL, 0))
-        {
-            LogLine(L"Error: SymLoadModuleEx returned error: %d", GetLastError());
-            break;
-        }
+        // items that may require cleanup
+        HANDLE hProcess = INVALID_HANDLE_VALUE;
 
-        try
+        // while false error catching loop
+        do
         {
-            auto symbolsHookedSuccessfully = 0;
-            for (auto symbolHook : moduleHook.symbolHooks)
+            // enable debug logs for symbol resolving
+            SymSetOptions(SYMOPT_DEBUG);
+
+            // initalise symbol resolver
+            HANDLE hCurrentProcess = GetCurrentProcess();
+            if (!DuplicateHandle(hCurrentProcess, hCurrentProcess, hCurrentProcess, &hProcess, 0, FALSE, DUPLICATE_SAME_ACCESS))
             {
-                // create store for symbol lookup
-                struct CFullSymbol : SYMBOL_INFO {
-                    CHAR nameBuffer[MAX_SYM_NAME];
-                } symbol;
-                ZeroMemory(&symbol, sizeof(symbol));
-                symbol.SizeOfStruct = sizeof(SYMBOL_INFO);
-                symbol.MaxNameLen = MAX_SYM_NAME;
-
-                // prefix symbol name with module name
-                auto symbolName = moduleHook.moduleName + "!" + symbolHook.symbolName;
-
-                // log
-                LogLine(L"Finding symbol: %S", symbolName.c_str());
-
-                // lookup the symbol
-                if (!SymFromName(hCurrentProcess, symbolName.c_str(), &symbol))
-                {
-                    LogLine(L"Error: SymFromName returned error: %d", GetLastError());
-                    break;
-                }
-
-                // set the hook
-                auto symbolAddress = (void*)symbol.Address;
-                if (!SetFunctionHook(symbolAddress, symbolHook.pHookFunction, symbolHook.pOriginalFunction))
-                {
-                    break;
-                }
-
-                symbolsHookedSuccessfully++;
+                LogLine(L"Error: DuplicateHandle returned error: %d", GetLastError());
+                break;
+            }
+            if (!SymInitialize(hCurrentProcess, NULL, FALSE))
+            {
+                LogLine(L"Error: SymInitialize returned error: %d", GetLastError());
+                break;
             }
 
-            // all hooked successfully?
-            if (symbolsHookedSuccessfully == moduleHook.symbolHooks.size())
+            // load symbols from microsoft symbol server (caches in the "sym" folder in the working directory)
+            // needs SymSrv.dll and SrcSrv.dll to be in the same directory as (the dyamically loaded) DbgHelp.dll
+            std::string symbolServer = "srv*https://msdl.microsoft.com/download/symbols";
+            if (!SymSetSearchPath(hCurrentProcess, symbolServer.c_str()))
             {
-                LogLine(L"All symbols hooked successfully");
-                ok = true;
+                LogLine(L"Error: SymSetSearchPath returned error: %d", GetLastError());
+                break;
             }
-        }
-        catch (const std::exception& e)
+
+            // load symbols for the module
+            if (!SymLoadModuleEx(hCurrentProcess, NULL, moduleHook.modulePath.c_str(), moduleHook.moduleName.c_str(), 0, 0, NULL, 0))
+            {
+                LogLine(L"Error: SymLoadModuleEx returned error: %d", GetLastError());
+                break;
+            }
+
+            try
+            {
+                auto symbolsHookedSuccessfully = 0;
+                for (auto symbolHook : moduleHook.symbolHooks)
+                {
+                    // create store for symbol lookup
+                    struct CFullSymbol : SYMBOL_INFO {
+                        CHAR nameBuffer[MAX_SYM_NAME];
+                    } symbol;
+                    ZeroMemory(&symbol, sizeof(symbol));
+                    symbol.SizeOfStruct = sizeof(SYMBOL_INFO);
+                    symbol.MaxNameLen = MAX_SYM_NAME;
+
+                    // prefix symbol name with module name
+                    auto symbolName = moduleHook.moduleName + "!" + symbolHook.symbolName;
+
+                    // log
+                    LogLine(L"Finding symbol: %S", symbolName.c_str());
+
+                    // lookup the symbol
+                    if (!SymFromName(hCurrentProcess, symbolName.c_str(), &symbol))
+                    {
+                        LogLine(L"Error: SymFromName returned error: %d", GetLastError());
+                        break;
+                    }
+
+                    // set the hook
+                    auto symbolAddress = (void*)symbol.Address;
+                    if (!SetFunctionHook(symbolAddress, symbolHook.pHookFunction, symbolHook.pOriginalFunction))
+                    {
+                        break;
+                    }
+
+                    symbolsHookedSuccessfully++;
+                }
+
+                // all hooked successfully?
+                if (symbolsHookedSuccessfully == moduleHook.symbolHooks.size())
+                {
+                    LogLine(L"All symbols hooked successfully");
+                    ok = true;
+                }
+            }
+            catch (const std::exception& e)
+            {
+                LogLine(L"Error: HookSymbols threw exception: %hs", e.what());
+            }
+        } while (false);
+
+        // cleaup
+        if (hProcess != INVALID_HANDLE_VALUE)
         {
-            LogLine(L"Error: HookSymbols threw exception: %hs", e.what());
+            (void)SymCleanup(hProcess);
+            (void)CloseHandle(hProcess);
         }
-    } while (false);
 
-    // cleaup
-    if (hProcess != INVALID_HANDLE_VALUE)
-    {
-        (void)SymCleanup(hProcess);
-        (void)CloseHandle(hProcess);
+        return ok;
     }
-
-    return ok;
 }
-
-} // namespace
 
 
 SafeHandle safe_create_snapshot()
