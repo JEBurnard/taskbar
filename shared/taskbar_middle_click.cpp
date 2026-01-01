@@ -1,7 +1,7 @@
 // Based on https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp
 // Licence GPL-3.0-only
 
-#include "taskbar.h"
+#include "taskbar_middle_click.h"
 
 #include <Windows.h>
 #include <psapi.h>
@@ -9,21 +9,28 @@
 #include <iostream>
 
 #include "MinHook.h"
-#include "common.h"
+#include "windhawk_common.h"
 
 
 namespace 
 {
-// ...
 
-void* CImmersiveTaskItem_vftable;
-LPVOID g_pCTaskListWndHandlingClick;
-LPVOID g_pCTaskListWndTaskBtnGroup;
+// group being handled in a click
+LPVOID g_pCTaskListWndHandlingClick = nullptr;
+
+// button group being handled in a click
+LPVOID g_pCTaskListWndTaskBtnGroup = nullptr;
+
+// task item being handled in a click
 int g_CTaskListWndTaskItemIndex = -1;
+
+// click action being performed in a click 
 int g_CTaskListWndClickAction = -1;
 
 
 // Orignal hooked functions
+
+void* CImmersiveTaskItem_vftable;
 
 using CTaskListWnd_HandleClick_t = long(WINAPI*)(
     LPVOID pThis,
@@ -190,8 +197,74 @@ long WINAPI CTaskBand_Launch_Hook(LPVOID pThis, LPVOID taskGroup, LPVOID param2,
 } // namespace
 
 
-// Entry point for setting up
-bool setup_taskbar_middle_click()
+TaskbarMiddleClick::TaskbarMiddleClick()
+    : moduleHooks {
+        {
+            .moduleName = "Taskbar.dll",
+            .modulePath = "C:\\Windows\\System32\\Taskbar.dll",
+            .symbolHooks = {
+                {
+                    {"?HandleClick@CTaskListWnd@@UEAAJPEAUITaskGroup@@PEAUITaskItem@@AEBULauncherOptions@System@Windows@winrt@@@Z"},
+                    (void**)&CTaskListWnd_HandleClick_Original,
+                    CTaskListWnd_HandleClick_Hook,
+                },
+                {
+                    {"?_HandleClick@CTaskListWnd@@IEAAXPEAUITaskBtnGroup@@HW4eCLICKACTION@1@HH@Z"},
+                    (void**)&CTaskListWnd__HandleClick_Original,
+                    CTaskListWnd__HandleClick_Hook,
+                },
+                {
+                    {"?Launch@CTaskBand@@UEAAJPEAUITaskGroup@@AEBUtagPOINT@@W4LaunchFromTaskbarOptions@@@Z"},
+                    (void**)&CTaskBand_Launch_Original,
+                    CTaskBand_Launch_Hook,
+                },
+                {
+                    {"?GetActiveBtn@CTaskListWnd@@UEAAJPEAPEAUITaskGroup@@PEAH@Z"},
+                    (void**)&CTaskListWnd_GetActiveBtn_Original,
+                },
+                {
+                    {"?ProcessJumpViewCloseWindow@CTaskListWnd@@UEAAXPEAUHWND__@@PEAUITaskGroup@@PEAUHMONITOR__@@@Z"},
+                    (void**)&CTaskListWnd_ProcessJumpViewCloseWindow_Original,
+                },
+                {
+                    {"?_EndTask@CTaskBand@@IEAAXQEAUHWND__@@H@Z"},
+                    (void**)&CTaskBand__EndTask_Original,
+                },
+                {
+                    {"?GetGroupType@CTaskBtnGroup@@UEAA?AW4eTBGROUPTYPE@@XZ"},
+                    (void**)&CTaskBtnGroup_GetGroupType_Original,
+                },
+                {
+                    {"?GetGroup@CTaskBtnGroup@@UEAAPEAUITaskGroup@@XZ"},
+                    (void**)&CTaskBtnGroup_GetGroup_Original,
+                },
+                {
+                    {"?GetGroup@CTaskBtnGroup@@UEAAPEAUITaskGroup@@XZ"},
+                    (void**)&CTaskBtnGroup_GetTaskItem_Original,
+                },
+                {
+                    {"?GetWindow@CWindowTaskItem@@UEAAPEAUHWND__@@XZ"},
+                    (void**)&CWindowTaskItem_GetWindow_Original,
+                },
+                {
+                    {"?GetWindow@CImmersiveTaskItem@@UEAAPEAUHWND__@@XZ"},
+                    (void**)&CImmersiveTaskItem_GetWindow_Original,
+                },
+                {
+                    {"??_7CImmersiveTaskItem@@6BITaskItem@@@"},
+                    (void**)&CImmersiveTaskItem_vftable,
+                },
+            }
+        }
+    }
+{ }
+
+const std::vector<ModuleHook>& TaskbarMiddleClick::GetHooks() const
+{
+    return moduleHooks;
+}
+
+bool TaskbarMiddleClick::Setup()
 {
     auto winVersion = GetExplorerVersion();
     if (winVersion == WinVersion::Unsupported) 
@@ -200,81 +273,5 @@ bool setup_taskbar_middle_click()
         return false;
     }
 
-    // Taskbar.dll hooks
-    std::string moduleName = "Taskbar.dll";
-    std::string modulePath = "C:\\Windows\\System32\\Taskbar.dll";
-    std::vector<SYMBOL_HOOK> symbolHooks = {
-        {
-            // public: virtual long __cdecl CTaskListWnd::HandleClick(struct ITaskGroup *,struct ITaskItem *,struct winrt::Windows::System::LauncherOptions const &)
-            {"Taskbar.dll!?HandleClick@CTaskListWnd@@UEAAJPEAUITaskGroup@@PEAUITaskItem@@AEBULauncherOptions@System@Windows@winrt@@@Z"},
-            (void**)& CTaskListWnd_HandleClick_Original,
-            CTaskListWnd_HandleClick_Hook,
-        },
-        {
-            // protected: void __cdecl CTaskListWnd::_HandleClick(struct ITaskBtnGroup *,int,enum CTaskListWnd::eCLICKACTION,int,int)
-            {"Taskbar.dll!?_HandleClick@CTaskListWnd@@IEAAXPEAUITaskBtnGroup@@HW4eCLICKACTION@1@HH@Z"},
-            (void**)&CTaskListWnd__HandleClick_Original,
-            CTaskListWnd__HandleClick_Hook,
-        },
-        {
-            // public: virtual long __cdecl CTaskBand::Launch(struct ITaskGroup *,struct tagPOINT const &,enum LaunchFromTaskbarOptions)
-            {"Taskbar.dll!?Launch@CTaskBand@@UEAAJPEAUITaskGroup@@AEBUtagPOINT@@W4LaunchFromTaskbarOptions@@@Z"},
-            (void**)&CTaskBand_Launch_Original,
-            CTaskBand_Launch_Hook,
-        },
-        {
-            // public: virtual long __cdecl CTaskListWnd::GetActiveBtn(struct ITaskGroup * *,int *)
-            {"Taskbar.dll!?GetActiveBtn@CTaskListWnd@@UEAAJPEAPEAUITaskGroup@@PEAH@Z"},
-            (void**)&CTaskListWnd_GetActiveBtn_Original,
-        },
-        {
-            // public: virtual void __cdecl CTaskListWnd::ProcessJumpViewCloseWindow(struct HWND__ *,struct ITaskGroup *,struct HMONITOR__ *)
-            {"Taskbar.dll!?ProcessJumpViewCloseWindow@CTaskListWnd@@UEAAXPEAUHWND__@@PEAUITaskGroup@@PEAUHMONITOR__@@@Z"},
-            (void**)&CTaskListWnd_ProcessJumpViewCloseWindow_Original,
-        },
-        {
-            // protected: void __cdecl CTaskBand::_EndTask(struct HWND__ * const,int)
-            {"Taskbar.dll!?_EndTask@CTaskBand@@IEAAXQEAUHWND__@@H@Z"},
-            (void**)&CTaskBand__EndTask_Original,
-        },
-        {
-            // public: virtual enum eTBGROUPTYPE __cdecl CTaskBtnGroup::GetGroupType(void)
-            {"Taskbar.dll!?GetGroupType@CTaskBtnGroup@@UEAA?AW4eTBGROUPTYPE@@XZ"},
-            (void**)&CTaskBtnGroup_GetGroupType_Original,
-        },
-        {
-            // public: virtual struct ITaskGroup * __cdecl CTaskBtnGroup::GetGroup(void)
-            {"Taskbar.dll!"},
-            (void**)&CTaskBtnGroup_GetGroup_Original,
-        },
-        {
-            // public: virtual struct ITaskItem * __cdecl CTaskBtnGroup::GetTaskItem(int)
-            {"Taskbar.dll!?GetGroup@CTaskBtnGroup@@UEAAPEAUITaskGroup@@XZ"},
-            (void**)&CTaskBtnGroup_GetTaskItem_Original,
-        },
-        {
-            // public: virtual struct HWND__ * __cdecl CWindowTaskItem::GetWindow(void)
-            {"Taskbar.dll!?GetWindow@CWindowTaskItem@@UEAAPEAUHWND__@@XZ"},
-            (void**)&CWindowTaskItem_GetWindow_Original,
-        },
-        {
-            // public: virtual struct HWND__ * __cdecl CImmersiveTaskItem::GetWindow(void)
-            {"Taskbar.dll!?GetWindow@CImmersiveTaskItem@@UEAAPEAUHWND__@@XZ"},
-            (void**)&CImmersiveTaskItem_GetWindow_Original,
-        },
-        {
-            // const CImmersiveTaskItem::`vftable'{for `ITaskItem'}
-            {"Taskbar.dll!??_7CImmersiveTaskItem@@6BITaskItem@@@"},
-            (void**)&CImmersiveTaskItem_vftable,
-        },
-    };
-
-    return HookSymbols(modulePath, moduleName, symbolHooks);
-
-    // not needed?:
-    /*
-    HMODULE kernelBaseModule = GetModuleHandle(L"kernelbase.dll");
-    auto pKernelBaseLoadLibraryExW = (decltype(&LoadLibraryExW))GetProcAddress(kernelBaseModule, "LoadLibraryExW");
-    WindhawkUtils::Wh_SetFunctionHookT(pKernelBaseLoadLibraryExW, LoadLibraryExW_Hook, &LoadLibraryExW_Original);
-    */
+    return HookSymbols(moduleHooks);
 }

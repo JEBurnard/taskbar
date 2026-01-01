@@ -7,8 +7,39 @@
 #include <DbgHelp.h>
 
 #include "MinHook.h"
-#include "taskbar.h"
-#include "common.h"
+#include "shared.h"
+#include "windhawk_common.h"
+#include "taskbar_middle_click.h"
+
+namespace
+{
+
+void WaitForExitSignal()
+{
+	// loop untill signalled: check for named pipe to exist
+	const std::wstring pipeName = L"\\\\.\\pipe\\takbar-close-thread-pipe";
+
+	while (true)
+	{
+		// query first matching file
+		WIN32_FIND_DATAW findData;
+		HANDLE hFind = FindFirstFileW(pipeName.c_str(), &findData);
+
+		// found? (not error nor found)
+		if (hFind != INVALID_HANDLE_VALUE)
+		{
+			// found, exit loop
+			FindClose(hFind);
+			break;
+		}
+
+		// yield before next call
+		// (1 second wait to avoid a tight loop)
+		Sleep(1000);
+	}
+}
+
+} // namespace
 
 BOOL WINAPI DllMain(HINSTANCE moduleHandle, DWORD reason, LPVOID reserved)
 {
@@ -67,7 +98,8 @@ BOOL WINAPI DllMain(HINSTANCE moduleHandle, DWORD reason, LPVOID reserved)
 
 	// setup mods
 	bool modsSetupOk = true;
-	modsSetupOk &= setup_taskbar_middle_click();
+	TaskbarMiddleClick taskbarMiddleClick;
+	modsSetupOk &= taskbarMiddleClick.Setup();
 
 	// all setup ok?
 	if (modsSetupOk)

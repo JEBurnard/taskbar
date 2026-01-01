@@ -1,0 +1,90 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Header Files\minhook">
+      <UniqueIdentifier>{69272f63-84d3-4390-9547-6371d15aaabf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\minhook\hde">
+      <UniqueIdentifier>{a86edcc2-af31-4041-89bb-25554f681ae7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\minhook">
+      <UniqueIdentifier>{548edd87-73a0-4030-8390-36a323d04353}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\minhook\hde">
+      <UniqueIdentifier>{40b551f5-98a5-46d6-8595-37582a05e2f6}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="taskbar_middle_click.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\minhook\src\buffer.c">
+      <Filter>Source Files\minhook</Filter>
+    </ClCompile>
+    <ClCompile Include="..\minhook\src\hook.c">
+      <Filter>Source Files\minhook</Filter>
+    </ClCompile>
+    <ClCompile Include="..\minhook\src\trampoline.c">
+      <Filter>Source Files\minhook</Filter>
+    </ClCompile>
+    <ClCompile Include="..\minhook\src\hde\hde32.c">
+      <Filter>Source Files\minhook\hde</Filter>
+    </ClCompile>
+    <ClCompile Include="..\minhook\src\hde\hde64.c">
+      <Filter>Source Files\minhook\hde</Filter>
+    </ClCompile>
+    <ClCompile Include="windhawk_common.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="shared.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="shared.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="taskbar_middle_click.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\minhook\include\MinHook.h">
+      <Filter>Header Files\minhook</Filter>
+    </ClInclude>
+    <ClInclude Include="..\minhook\src\buffer.h">
+      <Filter>Header Files\minhook</Filter>
+    </ClInclude>
+    <ClInclude Include="..\minhook\src\trampoline.h">
+      <Filter>Header Files\minhook</Filter>
+    </ClInclude>
+    <ClInclude Include="..\minhook\src\hde\hde32.h">
+      <Filter>Header Files\minhook\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\minhook\src\hde\hde64.h">
+      <Filter>Header Files\minhook\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\minhook\src\hde\pstdint.h">
+      <Filter>Header Files\minhook\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\minhook\src\hde\table32.h">
+      <Filter>Header Files\minhook\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\minhook\src\hde\table64.h">
+      <Filter>Header Files\minhook\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="windhawk_common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

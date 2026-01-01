@@ -5,68 +5,8 @@
 #include <tlhelp32.h>
 #include <iostream>
 
-namespace
-{
-	// RAII wrapper for handles
-	typedef std::shared_ptr<void> SafeHandle;
-	
-	SafeHandle safe_create_snapshot()
-	{
-		auto handle = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-		return SafeHandle(handle, CloseHandle);
-	}
-	
-	SafeHandle safe_open_process(DWORD flags, DWORD processId)
-	{
-		auto handle = OpenProcess(flags, FALSE, processId);
-		return SafeHandle(handle, CloseHandle);
-	}
+#include "shared.h"
 
-	SafeHandle safe_open_pipe(const std::wstring& name)
-	{
-		auto handle = CreateNamedPipe(name.c_str(), PIPE_ACCESS_OUTBOUND, PIPE_TYPE_BYTE, 1, 0, 0, 0, NULL);
-		return SafeHandle(handle, CloseHandle);
-	}
-
-	// RAII wrapper for memory allocations in other processes
-	class SafeAlloc
-	{
-	public:
-		SafeAlloc(SafeHandle process, SIZE_T size, DWORD protection)
-			: _process(process)
-			, _allocation(nullptr)
-		{
-			_allocation = VirtualAllocEx(process.get(), nullptr, size, MEM_RESERVE | MEM_COMMIT, protection);
-		}
-
-		virtual ~SafeAlloc()
-		{
-			if (_allocation != nullptr)
-			{
-				if (VirtualFreeEx(_process.get(), _allocation, NULL, MEM_RELEASE) != 0)
-				{
-					_allocation = nullptr;
-				}
-				else
-				{
-					std::cout << "Failed to free allocation" << std::endl;
-				}
-			}
-		}
-
-		SafeAlloc(const SafeAlloc&) = delete;
-		SafeAlloc& operator=(SafeAlloc other) = delete;
-
-		HANDLE get() const
-		{
-			return _allocation;
-		}
-
-	private:
-		SafeHandle _process;
-		void* _allocation;
-	};
-}
 
 int main()
 {
