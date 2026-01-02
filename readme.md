@@ -18,16 +18,16 @@ Many thanks to [m417z](https://github.com/m417z) for all the inspration
 # Licence
 Licenced under BSD-2-Clause AND GPL-3.0-only AND Unlicense
 * BSD-2-Clause:
-	* [minhook](https://github.com/m417z/minhook/tree/multihook)
-	  * Copyright (C) 2009-2017 Tsuda Kageyu
-	  * Copyright (c) 2008-2009, Vyacheslav Patkov
+    * [minhook](https://github.com/m417z/minhook/tree/multihook)
+      * Copyright (C) 2009-2017 Tsuda Kageyu
+      * Copyright (c) 2008-2009, Vyacheslav Patkov
 * GPL-3.0-only:
   * windhawk mods
     * [Disable taskbar grouping](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-grouping.wh.cpp)
-	  * <no copyright statement>
-	* [Middle-click close](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp)
-	  * <no copyright statement>
+      * <no copyright statement>
+    * [Middle-click close](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp)
+      * <no copyright statement>
   * [windhawk](https://github.com/ramensoftware/windhawk)
-	* Copyright (C) 2023  Michael Maltsev
+    * Copyright (C) 2023  Michael Maltsev
 * Unlicense:
   * New source files in this project

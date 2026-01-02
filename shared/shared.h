@@ -6,6 +6,15 @@
 #include <memory>
 #include <Windows.h>
 
+
+// Named pipe who's presence indicates the injected thread should exit
+const std::wstring ExitSignalPipeName = L"\\\\.\\pipe\\taskbar-close-thread-pipe";
+
+// File name to store/retrieve the symbol cache
+// (relative to the executable/module binary directory)
+const std::wstring SymbolCacheFileName = L"symbols.dat";
+
+
 // RAII wrapper for handles
 typedef std::shared_ptr<void> SafeHandle;
 
@@ -22,22 +31,22 @@ SafeHandle safe_open_pipe(const std::wstring& name);
 class SafeAlloc
 {
 public:
-	SafeAlloc(SafeHandle process, SIZE_T size, DWORD protection);
+    SafeAlloc(SafeHandle process, SIZE_T size, DWORD protection);
     virtual ~SafeAlloc();
 
-	SafeAlloc(const SafeAlloc&) = delete;
-	SafeAlloc& operator=(SafeAlloc other) = delete;
+    SafeAlloc(const SafeAlloc&) = delete;
+    SafeAlloc& operator=(SafeAlloc other) = delete;
 
     HANDLE get() const;
 
 private:
-	SafeHandle _process;
-	void* _allocation;
+    SafeHandle _process;
+    void* _allocation;
 };
 
 
 // A symbol to be hooked from a module.
-typedef struct SymbolHook
+struct SymbolHook
 {
     // symbol to hook
     std::string symbolName;
@@ -47,10 +56,10 @@ typedef struct SymbolHook
 
     // optional replacement function
     void* pHookFunction;
-} SymbolHook;
+};
 
 // A module to be hooked.
-typedef struct ModuleHook
+struct ModuleHook
 {
     // name to use when loading the module
     // eg "Taskbar.dll", is then prefixed to symbolNames
@@ -62,22 +71,18 @@ typedef struct ModuleHook
 
     // symbols to hook
     std::vector<SymbolHook> symbolHooks;
-} ModuleHook;
-
-// Interface of a class that modifies windows explorer.
-class IExplorerModifier
-{
-    // Get the module hooks this modifier requires.
-    virtual const std::vector<ModuleHook>& GetHooks() const = 0;
-
-    // Perform the hooking
-    virtual bool Setup() = 0;
 };
 
 
-// Lookup symbols from a symbol server and save to disk.
-// (for use in hook symbols)
-bool LookupSymbols(const std::vector<ModuleHook>& moduleHooks);
+// Get the full path to the current executable
+std::wstring GetExecuablePath();
 
-// Perform the hooks
-bool HookSymbols(const std::vector<ModuleHook>& moduleHooks);
+// Get the full path to the module specified
+std::wstring GetModulePath(HINSTANCE moduleHandle);
+
+// Get the directory of the file path specified
+// (does not include the trailing slash)
+std::wstring GetBaseName(const std::wstring& path);
+
+// Check if a path exists
+bool PathExists(const std::wstring& path);

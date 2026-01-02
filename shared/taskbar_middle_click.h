@@ -1,7 +1,8 @@
-// Taskbar middle click modificiation
+// Taskbar middle click modification
 #pragma once
 
-#include "shared.h"
+#include "modifier.h"
+
 
 class TaskbarMiddleClick : public IExplorerModifier
 {
@@ -9,8 +10,9 @@ public:
     TaskbarMiddleClick();
     virtual ~TaskbarMiddleClick() = default;
 
+    // IExplorerModifier methods
     virtual const std::vector<ModuleHook>& GetHooks() const;
-    virtual bool Setup();
+    virtual bool Setup(const IResolveSymbols& symbolResolver);
 
 private:
     std::vector<ModuleHook> moduleHooks;

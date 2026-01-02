@@ -10,6 +10,7 @@
 
 #include "MinHook.h"
 #include "windhawk_common.h"
+#include "modifier.h"
 
 
 namespace 
@@ -27,7 +28,7 @@ namespace
     int g_CTaskListWndClickAction = -1;
 
 
-    // Orignal hooked functions
+    // Original hooked functions
 
     void* CImmersiveTaskItem_vftable;
 
@@ -262,7 +263,7 @@ const std::vector<ModuleHook>& TaskbarMiddleClick::GetHooks() const
     return moduleHooks;
 }
 
-bool TaskbarMiddleClick::Setup()
+bool TaskbarMiddleClick::Setup(const IResolveSymbols& symbolResolver)
 {
     auto winVersion = GetExplorerVersion();
     if (winVersion == WinVersion::Unsupported) 
@@ -271,5 +272,5 @@ bool TaskbarMiddleClick::Setup()
         return false;
     }
 
-    return HookSymbols(moduleHooks);
+    return HookSymbols(moduleHooks, symbolResolver);
 }

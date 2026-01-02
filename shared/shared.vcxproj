@@ -24,7 +24,9 @@
     <ClCompile Include="..\minhook\src\hde\hde64.c" />
     <ClCompile Include="..\minhook\src\hook.c" />
     <ClCompile Include="..\minhook\src\trampoline.c" />
+    <ClCompile Include="modifier.cpp" />
     <ClCompile Include="shared.cpp" />
+    <ClCompile Include="symbol_resolver.cpp" />
     <ClCompile Include="taskbar_middle_click.cpp" />
     <ClCompile Include="windhawk_common.cpp" />
   </ItemGroup>
@@ -37,6 +39,8 @@
     <ClInclude Include="..\minhook\src\hde\table32.h" />
     <ClInclude Include="..\minhook\src\hde\table64.h" />
     <ClInclude Include="..\minhook\src\trampoline.h" />
+    <ClInclude Include="modifier.h" />
+    <ClInclude Include="symbol_resolver.h" />
     <ClInclude Include="taskbar_middle_click.h" />
     <ClInclude Include="shared.h" />
     <ClInclude Include="windhawk_common.h" />
