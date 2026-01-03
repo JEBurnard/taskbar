@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <psapi.h>
 
+#include "MinHook.h"
 #include "windhawk_common.h"
 #include "taskbar_middle_click.h"
 
@@ -65,6 +66,27 @@ namespace
         // not found
         return 0;
     }
+
+    // Hook a function
+    bool SetFunctionHook(void* targetFunction, void* hookFunction, void** originalFunction)
+    {
+        MH_STATUS status = MH_CreateHook(targetFunction, hookFunction, originalFunction);
+        if (status != MH_OK)
+        {
+            LogLine(L"Error: MH_CreateHook returned %d", status);
+            return false;
+        }
+
+        status = MH_QueueEnableHook(targetFunction);
+        if (status != MH_OK)
+        {
+            LogLine(L"Error: MH_QueueEnableHook returned %d", status);
+            return false;
+        }
+
+        return true;
+    }
+
 }
 
 bool HookSymbols(const std::vector<ModuleHook>& moduleHooks, const IResolveSymbols& symbolResolver)

@@ -8,8 +8,6 @@
 #include <functional>
 #include <filesystem>
 
-#include "MinHook.h"
-
 
 namespace
 {
@@ -113,24 +111,4 @@ WinVersion GetExplorerVersion()
     }
 
     return WinVersion::Unsupported;
-}
-
-bool SetFunctionHook(void* targetFunction, void* hookFunction, void** originalFunction)
-{
-    ULONG_PTR hookIdent = 1; // not needed in this implementation, todo: revert to vanilla minhook
-    MH_STATUS status = MH_CreateHookEx(hookIdent, targetFunction, hookFunction, originalFunction);
-    if (status != MH_OK)
-    {
-        LogLine(L"Error: MH_CreateHookEx returned %d", status);
-        return false;
-    }
-
-    status = MH_QueueEnableHookEx(hookIdent, targetFunction);
-    if (status != MH_OK)
-    {
-        LogLine(L"Error: MH_QueueEnableHookEx returned %d", status);
-        return false;
-    }
-
-    return true;
 }

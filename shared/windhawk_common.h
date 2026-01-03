@@ -24,9 +24,3 @@ enum class WinVersion
 // Detect windows version from explorer
 // Based on https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp
 WinVersion GetExplorerVersion();
-
-// Hook a function
-// Based on:
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mod.h
-// - https://github.com/ramensoftware/windhawk/blob/main/src/windhawk/engine/mod.cpp
-bool SetFunctionHook(void* targetFunction, void* hookFunction, void** originalFunction);
