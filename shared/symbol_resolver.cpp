@@ -86,7 +86,8 @@ bool SymbolResolver::LoadSymbolsFromServer(const std::vector<ModuleHook>& module
     for (const auto& moduleHook : moduleHooks)
     {
         // load the module
-        if (!SymLoadModuleEx(symbolProcessHandle, NULL, moduleHook.modulePath.c_str(), moduleHook.moduleName.c_str(), 0, 0, NULL, 0))
+        DWORD64 baseAddress = 0; 
+        if (!SymLoadModuleEx(symbolProcessHandle, NULL, moduleHook.modulePath.c_str(), moduleHook.moduleName.c_str(), baseAddress, 0, NULL, 0))
         {
             LogLine(L"Error: SymLoadModuleEx for %S returned error: %d", moduleHook.modulePath.c_str(), GetLastError());
             error = true;
@@ -119,7 +120,7 @@ bool SymbolResolver::LoadSymbolsFromServer(const std::vector<ModuleHook>& module
             }
 
             // add to temporary cache
-            auto symbolAddress = (void*)symbol.Address;
+            auto symbolAddress = (void*)(symbol.Address - symbol.ModBase);
             newSymbols.insert({ symbolName, symbolAddress });
         }
 
@@ -149,7 +150,7 @@ bool SymbolResolver::LoadSymbolsFromFile(const std::wstring& filePath)
         std::ifstream file(filePath);
 
         // read each line
-        // <symbol> <address dec><eol>
+        // <symbol> <address hex><eol>
         std::string line;
         while (std::getline(file, line))
         {
@@ -160,10 +161,10 @@ bool SymbolResolver::LoadSymbolsFromFile(const std::wstring& filePath)
                 return false;
             }
             auto symbolName = line.substr(0, pos);
-            auto symbolAddressDec = line.substr(pos + 1);
+            auto symbolAddressHex = line.substr(pos + 1);
 
             // parse the address
-            auto symbolAddress = std::stoll(symbolAddressDec);
+            auto symbolAddress = std::stoll(symbolAddressHex, nullptr, 16);
             auto symbolAddressPtr = (void*)symbolAddress;
             newSymbols.insert({ symbolName, symbolAddressPtr });
         }
@@ -187,7 +188,7 @@ bool SymbolResolver::SaveSymbolsToFile(const std::wstring& filePath)
         std::ofstream file(filePath, std::ios_base::trunc);
 
         // write out:
-        // <symbol> <address dec><eol>
+        // <symbol> <address hex><eol>
         for (const auto& symbol : symbols)
         {
             file << symbol.first << " " << symbol.second << std::endl;
