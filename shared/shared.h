@@ -44,6 +44,22 @@ private:
     void* _allocation;
 };
 
+// RAII wrapper for creating a remote thread
+class SafeCreateRemoteThread
+{
+public:
+    SafeCreateRemoteThread(HANDLE process, LPTHREAD_START_ROUTINE startAddress, LPVOID parameter);
+    virtual ~SafeCreateRemoteThread();
+
+    SafeCreateRemoteThread(const SafeCreateRemoteThread&) = delete;
+    SafeCreateRemoteThread& operator=(SafeCreateRemoteThread other) = delete;
+
+    HANDLE get() const;
+
+private:
+    HANDLE _thread;
+};
+
 
 // A symbol to be hooked from a module.
 struct SymbolHook

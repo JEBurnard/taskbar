@@ -29,6 +29,7 @@ SafeHandle safe_open_pipe(const std::wstring& name)
     return SafeHandle(handle, CloseHandle);
 }
 
+
 SafeAlloc::SafeAlloc(SafeHandle process, SIZE_T size, DWORD protection)
     : _process(process)
     , _allocation(nullptr)
@@ -54,6 +55,27 @@ SafeAlloc::~SafeAlloc()
 HANDLE SafeAlloc::get() const
 {
     return _allocation;
+}
+
+
+SafeCreateRemoteThread::SafeCreateRemoteThread(HANDLE process, LPTHREAD_START_ROUTINE startAddress, LPVOID parameter)
+{
+    _thread = CreateRemoteThread(process, nullptr, NULL, startAddress, parameter, NULL, nullptr);
+}
+
+SafeCreateRemoteThread::~SafeCreateRemoteThread()
+{
+    if (_thread != NULL)
+    {
+        (void)WaitForSingleObject(_thread, INFINITE);
+        (void)CloseHandle(_thread);
+        _thread = NULL;
+    }
+}
+
+HANDLE SafeCreateRemoteThread::get() const
+{
+    return _thread;
 }
 
 

@@ -172,13 +172,14 @@ int main()
         return -1;
     }
 
-    // start a thread in the process which will load the dll
-    // (must wait and free)
-    HANDLE threadHandle = CreateRemoteThread(processHandle.get(), nullptr, NULL, LPTHREAD_START_ROUTINE(LoadLibraryW), allocation.get(), NULL, nullptr);
-    if (!threadHandle)
+    // start (and await) thread in the process which will load the dll (and spawn the modifier thread)
     {
-        std::cout << "Failed to create thread in process " << explorerProcessId << std::endl;
-        return 01;
+        SafeCreateRemoteThread threadHandle(processHandle.get(), LPTHREAD_START_ROUTINE(LoadLibraryW), allocation.get());
+        if (threadHandle.get() == NULL)
+        {
+            std::cout << "Failed to create load thread in process " << explorerProcessId << std::endl;
+            return -1;
+        }
     }
 
     // ok, successfully injected
@@ -194,11 +195,10 @@ int main()
     // signal thread to exit: create a specifically named pipe
     auto pipeHandle = safe_open_pipe(ExitSignalPipeName);
 
-    // wait for thread to exit
-    std::cout << "Waiting for injected thread to exit" << std::endl;
-    (void)WaitForSingleObject(threadHandle, INFINITE);
-    (void)CloseHandle(threadHandle);
-    std::cout << "Done" << std::endl;
+    // todo: wait for pipe to be seen by shutdown
+    Sleep(3000);
+    // todo: wait for injected to shutdown
 
+    std::cout << "Done" << std::endl;
     return 0;
 }
