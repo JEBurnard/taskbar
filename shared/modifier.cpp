@@ -77,7 +77,7 @@ namespace
             return false;
         }
 
-        status = MH_QueueEnableHook(targetFunction);
+        status = MH_EnableHook(targetFunction);
         if (status != MH_OK)
         {
             LogLine(L"Error: MH_QueueEnableHook returned %d", status);
@@ -86,7 +86,6 @@ namespace
 
         return true;
     }
-
 }
 
 bool HookSymbols(const std::vector<ModuleHook>& moduleHooks, const IResolveSymbols& symbolResolver)
@@ -122,7 +121,7 @@ bool HookSymbols(const std::vector<ModuleHook>& moduleHooks, const IResolveSymbo
             if (symbolHook.pHookFunction != nullptr)
             {
                 // apply the hook
-                LogLine(L"Hooking: %p %S!%S", symbolAddress, moduleHook.moduleName.c_str(), symbolHook.symbolName.c_str());
+                LogLine(L"Hooking: %p to %p %S!%S", symbolAddress, symbolHook.pHookFunction, moduleHook.moduleName.c_str(), symbolHook.symbolName.c_str());
                 try
                 {
                     if (!SetFunctionHook(symbolAddress, symbolHook.pHookFunction, symbolHook.pOriginalFunction))

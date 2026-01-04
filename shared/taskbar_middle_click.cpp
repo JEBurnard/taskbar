@@ -125,74 +125,74 @@ namespace
     }
 
     long WINAPI CTaskBand_Launch_Hook(LPVOID pThis, LPVOID taskGroup, LPVOID param2, int param3) 
-{
-    LogLine(L"CTaskBand_Launch_Hook");
-
-    auto original = [=]() 
     {
-        return CTaskBand_Launch_Original(pThis, taskGroup, param2, param3);
-    };
+        LogLine(L"CTaskBand_Launch_Hook");
 
-    if (!g_pCTaskListWndHandlingClick || !g_pCTaskListWndTaskBtnGroup) 
-    {
-        return original();
-    }
-
-    // Get the task group from taskBtnGroup instead of relying on taskGroup for
-    // compatibility with the taskbar-grouping mod, which hooks this function
-    // and replaces taskGroup. An ugly workaround but it works.
-    LPVOID realTaskGroup = CTaskBtnGroup_GetGroup_Original(g_pCTaskListWndTaskBtnGroup);
-    if (!realTaskGroup) 
-    {
-        return original();
-    }
-
-    // The click action of launching a new instance can happen in two ways:
-    // * Middle click.
-    // * Shift + Left click.
-    // Exclude the second click action by checking whether the shift key is
-    // down.
-    if (g_CTaskListWndClickAction != 3 || GetKeyState(VK_SHIFT) < 0) 
-    {
-        return original();
-    }
-
-    // Group types:
-    // 1 - Single item or multiple uncombined items
-    // 2 - Pinned item
-    // 3 - Multiple combined items
-    int groupType = CTaskBtnGroup_GetGroupType_Original(g_pCTaskListWndTaskBtnGroup);
-    if (groupType != 1) 
-    {
-        return original();
-    }
-
-    HWND hWnd = nullptr;
-    if (g_CTaskListWndTaskItemIndex >= 0)
-    {
-        void* taskItem = CTaskBtnGroup_GetTaskItem_Original(g_pCTaskListWndTaskBtnGroup, g_CTaskListWndTaskItemIndex);
-        if (*(void**)taskItem == CImmersiveTaskItem_vftable) 
+        auto original = [=]() 
         {
-            hWnd = CImmersiveTaskItem_GetWindow_Original(taskItem);
-        }
-        else 
+            return CTaskBand_Launch_Original(pThis, taskGroup, param2, param3);
+        };
+
+        if (!g_pCTaskListWndHandlingClick || !g_pCTaskListWndTaskBtnGroup) 
         {
-            hWnd = CWindowTaskItem_GetWindow_Original(taskItem);
+            return original();
         }
+
+        // Get the task group from taskBtnGroup instead of relying on taskGroup for
+        // compatibility with the taskbar-grouping mod, which hooks this function
+        // and replaces taskGroup. An ugly workaround but it works.
+        LPVOID realTaskGroup = CTaskBtnGroup_GetGroup_Original(g_pCTaskListWndTaskBtnGroup);
+        if (!realTaskGroup) 
+        {
+            return original();
+        }
+
+        // The click action of launching a new instance can happen in two ways:
+        // * Middle click.
+        // * Shift + Left click.
+        // Exclude the second click action by checking whether the shift key is
+        // down.
+        if (g_CTaskListWndClickAction != 3 || GetKeyState(VK_SHIFT) < 0) 
+        {
+            return original();
+        }
+
+        // Group types:
+        // 1 - Single item or multiple uncombined items
+        // 2 - Pinned item
+        // 3 - Multiple combined items
+        int groupType = CTaskBtnGroup_GetGroupType_Original(g_pCTaskListWndTaskBtnGroup);
+        if (groupType != 1) 
+        {
+            return original();
+        }
+
+        HWND hWnd = nullptr;
+        if (g_CTaskListWndTaskItemIndex >= 0)
+        {
+            void* taskItem = CTaskBtnGroup_GetTaskItem_Original(g_pCTaskListWndTaskBtnGroup, g_CTaskListWndTaskItemIndex);
+            if (*(void**)taskItem == CImmersiveTaskItem_vftable) 
+            {
+                hWnd = CImmersiveTaskItem_GetWindow_Original(taskItem);
+            }
+            else 
+            {
+                hWnd = CWindowTaskItem_GetWindow_Original(taskItem);
+            }
+        }
+
+        if (hWnd != nullptr)
+        {
+            LogLine(L"Closing HWND %08X", (DWORD)(ULONG_PTR)hWnd);
+
+            POINT pt;
+            GetCursorPos(&pt);
+            HMONITOR monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+            CTaskListWnd_ProcessJumpViewCloseWindow_Original(g_pCTaskListWndHandlingClick, hWnd, realTaskGroup, monitor);
+        }
+
+        return 0;
     }
-
-    if (hWnd != nullptr)
-    {
-        LogLine(L"Closing HWND %08X", (DWORD)(ULONG_PTR)hWnd);
-
-        POINT pt;
-        GetCursorPos(&pt);
-        HMONITOR monitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
-        CTaskListWnd_ProcessJumpViewCloseWindow_Original(g_pCTaskListWndHandlingClick, hWnd, realTaskGroup, monitor);
-    }
-
-    return 0;
-}
 }
 
 
@@ -238,7 +238,7 @@ TaskbarMiddleClick::TaskbarMiddleClick()
                     (void**)&CTaskBtnGroup_GetGroup_Original,
                 },
                 {
-                    {"?GetGroup@CTaskBtnGroup@@UEAAPEAUITaskGroup@@XZ"},
+                    {"?GetTaskItem@CTaskBtnGroup@@UEAAPEAUITaskItem@@H@Z"},
                     (void**)&CTaskBtnGroup_GetTaskItem_Original,
                 },
                 {
