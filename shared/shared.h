@@ -7,8 +7,8 @@
 #include <Windows.h>
 
 
-// Named pipe who's presence indicates the injected thread should exit
-const std::wstring ExitSignalPipeName = L"\\\\.\\pipe\\taskbar-close-thread-pipe";
+// Filewho's presence indicates the injected thread should exit
+const std::wstring ExitSignaFileName = L".shutdown.flag";
 
 // File name to store/retrieve the symbol cache
 // (relative to the executable/module binary directory)
@@ -24,8 +24,6 @@ SafeHandle safe_create_snapshot();
 // Call OpenProcess and return a safe handle
 SafeHandle safe_open_process(DWORD flags, DWORD processId);
 
-// Call CreateNamedPipe and return a safe handle
-SafeHandle safe_open_pipe(const std::wstring& name);
 
 // RAII wrapper for memory allocations in other processes
 class SafeAlloc

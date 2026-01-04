@@ -23,12 +23,6 @@ SafeHandle safe_open_process(DWORD flags, DWORD processId)
     return SafeHandle(handle, CloseHandle);
 }
 
-SafeHandle safe_open_pipe(const std::wstring& name)
-{
-    auto handle = CreateNamedPipe(name.c_str(), PIPE_ACCESS_OUTBOUND, PIPE_TYPE_BYTE, 1, 0, 0, 0, NULL);
-    return SafeHandle(handle, CloseHandle);
-}
-
 
 SafeAlloc::SafeAlloc(SafeHandle process, SIZE_T size, DWORD protection)
     : _process(process)

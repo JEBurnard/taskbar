@@ -26,18 +26,6 @@ namespace
     static std::atomic<bool> g_unloading = false;
 
 
-    // Wait for the exit signal
-    void WaitForExitSignal()
-    {
-        // loop until signalled: check for named pipe to exist
-        while (!g_unloading.load() && !PathExists(ExitSignalPipeName))
-        {
-            // yield before next call
-            // (1 second wait to avoid a tight loop)
-            Sleep(1000);
-        }
-    }
-
     // The main loop - run the modifiers and wait for exit
     void DoWork()
     {
@@ -80,12 +68,13 @@ namespace
             modsSetupOk &= modifier->Setup(symbolResolver);
         }
 
-        // all setup ok?
-        if (modsSetupOk)
+        // loop until signalled: check for unload / signal file to exist
+        auto exitSignalFilePath = moduleDir + L"\\" + ExitSignaFileName;
+        while (modsSetupOk && !g_unloading.load() && !PathExists(exitSignalFilePath))
         {
-            // keep running until signalled
-            LogLine(L"Waiting for exit signal");
-            WaitForExitSignal();
+            // yield before next call
+            // (1 second wait to avoid a tight loop)
+            Sleep(1000);
         }
 
         // clean up
@@ -93,6 +82,14 @@ namespace
         if (MH_Uninitialize() != MH_OK)
         {
             LogLine(L"Failed to clean up minhook");
+        }
+
+        // clean up the exit signal file
+        // (to indicate to main that we saw it)
+        auto deleteResult = DeleteFile(exitSignalFilePath.c_str());
+        if (deleteResult != NO_ERROR && deleteResult != ERROR_FILE_NOT_FOUND)
+        {
+            LogLine(L"injected.dll: failed to clean up exit signal file %s : %d", exitSignalFilePath.c_str(), GetLastError());
         }
 
         // unload ourself?

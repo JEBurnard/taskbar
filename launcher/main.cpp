@@ -2,6 +2,7 @@
 // injects injected.dll into explorer.exe
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <Windows.h>
 #include <tlhelp32.h>
@@ -17,12 +18,19 @@ namespace
     // (process ids are divisible by 4, so MAXDWORD is not possible)
     const DWORD INVALID_PROCESS_ID = MAXDWORD;
 
+    // Get the root directory path (of this executable)
+    std::wstring GeBasePath()
+    {
+        auto execuablePath = GetExecuablePath();
+        auto executableDir = GetBaseName(execuablePath);
+        return executableDir;
+    }
+
     // Get the full path to the dll file to inject
     // Returns empty string on error
     std::wstring GetInjectedFilePath()
     {
-        auto execuablePath = GetExecuablePath();
-        auto executableDir = GetBaseName(execuablePath);
+        auto executableDir = GeBasePath();
 
         auto dllPath = executableDir + L"\\injected.dll";
         if (!PathExists(dllPath))
@@ -126,6 +134,14 @@ namespace
 
 int main()
 {
+    // check not already running
+    auto exitSignalFilePath = GeBasePath() + L"\\" + ExitSignaFileName;
+    if (PathExists(exitSignalFilePath))
+    {
+        std::wcout << "Error: the exit signal file already exists " << exitSignalFilePath << std::endl;
+        return -1;
+    }
+
     // cache symbols required by mods
     if (!LookupSymbols())
     {
@@ -192,12 +208,22 @@ int main()
     // user closed
     std::cout << "Signalling injected thread to exit" << std::endl;
 
-    // signal thread to exit: create a specifically named pipe
-    auto pipeHandle = safe_open_pipe(ExitSignalPipeName);
+    // signal thread to exit: create the signal file
+    {
+        std::ofstream exitSignalFile(exitSignalFilePath);
+    }
 
-    // todo: wait for pipe to be seen by shutdown
-    Sleep(3000);
-    // todo: wait for injected to shutdown
+    // wait for pipe to be seen by shutdown (ie deleted)
+    std::cout << "Waiting for injected thread to exit" << std::endl;
+    while (PathExists(exitSignalFilePath))
+    {
+        // yield before next call
+        // (1 second wait to avoid a tight loop)
+        Sleep(1000);
+    }
+
+    // yield for the dll to unload
+    Sleep(0);
 
     std::cout << "Done" << std::endl;
     return 0;
