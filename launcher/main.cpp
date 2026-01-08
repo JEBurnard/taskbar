@@ -131,7 +131,7 @@ namespace
     }
 
     // Signal the injected thread to exit
-    void SignalInjectedExit()
+    void SignalExitInjectedThread()
     {
         // log
         std::cout << "Signalling injected thread to exit" << std::endl;
@@ -161,7 +161,7 @@ namespace
         // handle shutdown, logoff, ctrl+c and close events
         if (dwControlEvent == CTRL_SHUTDOWN_EVENT || dwControlEvent == CTRL_LOGOFF_EVENT || dwControlEvent == CTRL_C_EVENT || dwControlEvent == CTRL_CLOSE_EVENT)
         {
-            SignalInjectedExit();
+            SignalExitInjectedThread();
         }
     
         return true;
@@ -246,7 +246,7 @@ int main()
     (void)std::cin.get();
 
     // user signalled, trigger the injected thread to exit
-    SignalInjectedExit();
+    SignalExitInjectedThread();
 
     return 0;
 }
