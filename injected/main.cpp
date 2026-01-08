@@ -87,7 +87,7 @@ namespace
         // clean up the exit signal file
         // (to indicate to main that we saw it)
         auto deleteResult = DeleteFile(exitSignalFilePath.c_str());
-        if (deleteResult != NO_ERROR && deleteResult != ERROR_FILE_NOT_FOUND)
+        if (!(deleteResult == NO_ERROR || deleteResult == ERROR_FILE_NOT_FOUND))
         {
             LogLine(L"injected.dll: failed to clean up exit signal file %s : %d", exitSignalFilePath.c_str(), GetLastError());
         }
