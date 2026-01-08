@@ -24,9 +24,9 @@ Licenced under BSD-2-Clause AND GPL-3.0-only AND Unlicense
 * GPL-3.0-only:
   * windhawk mods
     * [Disable taskbar grouping](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-grouping.wh.cpp)
-      * <no copyright statement>
+      * no copyright statement
     * [Middle-click close](https://github.com/ramensoftware/windhawk-mods/blob/main/mods/taskbar-button-click.wh.cpp)
-      * <no copyright statement>
+      * no copyright statement
   * [windhawk](https://github.com/ramensoftware/windhawk)
     * Copyright (C) 2023  Michael Maltsev
 * Unlicense:
