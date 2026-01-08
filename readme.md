@@ -5,7 +5,7 @@ Minimal build of [Windhawk](https://github.com/ramensoftware/windhawk) that incl
 
 The purpose of this project is to allow me to customise my work desktop without being blocked by FortiClient.
 
-Many thanks to [m417z](https://github.com/m417z) for all the inspration
+Many thanks to [m417z](https://github.com/m417z) for all the inspiration
 * [WindHawk](https://windhawk.net/)
 * [7 Taskbar Tweaker](https://ramensoftware.com/7-taskbar-tweaker)
 
