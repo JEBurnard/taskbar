@@ -8,6 +8,7 @@
 #include <tlhelp32.h>
 
 #include "shared.h"
+#include "windhawk_common.h"
 #include "symbol_resolver.h"
 #include "modifier.h"
 
@@ -35,7 +36,7 @@ namespace
         auto dllPath = executableDir + L"\\injected.dll";
         if (!PathExists(dllPath))
         {
-            std::wcout << "DLL to inject does not exist in launcher directory: " << dllPath << std::endl;
+            LogLine(L"DLL to inject does not exist in launcher directory: %s", dllPath.c_str());
             return std::wstring();
         }
 
@@ -53,7 +54,7 @@ namespace
         auto snapshot = safe_create_snapshot();
         if (snapshot.get() == INVALID_HANDLE_VALUE)
         {
-            std::cout << "Failed to enumerate processes" << std::endl;
+            LogLine(L"Failed to enumerate processes");
             return INVALID_PROCESS_ID;
         }
 
@@ -64,7 +65,7 @@ namespace
         // query first process
         if (!Process32First(snapshot.get(), &process))
         {
-            std::cout << "Failed to enumerate first process" << std::endl;
+            LogLine(L"Failed to enumerate first process");
             return INVALID_PROCESS_ID;
         }
 
@@ -93,10 +94,10 @@ namespace
             DWORD dwError = GetLastError();
             if (dwError == ERROR_NO_MORE_FILES)
             {
-                std::cout << "Failed to enumerate all processes" << std::endl;
+                LogLine(L"Failed to enumerate all processes");
             }
 
-            std::cout << "Failed to find explorer.exe" << std::endl;
+            LogLine(L"Failed to find explorer.exe");
         }
 
         return explorerProcessId;
@@ -126,7 +127,7 @@ namespace
         }
 
         // ok if reach here
-        std::cout << "All symbols looked up successfully" << std::endl;
+        LogLine(L"All symbols looked up successfully");
         return true;
     }
 
@@ -134,7 +135,7 @@ namespace
     void SignalExitInjectedThread()
     {
         // log
-        std::cout << "Signalling injected thread to exit" << std::endl;
+        LogLine(L"Signalling injected thread to exit");
 
         // signal thread to exit: create the signal file
         auto exitSignalFilePath = GetBasePath() + L"\\" + ExitSignaFileName;
@@ -143,7 +144,7 @@ namespace
         }
 
         // wait for pipe to be seen by shutdown (ie deleted)
-        std::cout << "Waiting for injected thread to exit" << std::endl;
+        LogLine(L"Waiting for injected thread to exit");
         while (PathExists(exitSignalFilePath))
         {
             // yield before next call
@@ -175,7 +176,7 @@ int main()
     auto exitSignalFilePath = GetBasePath() + L"\\" + ExitSignaFileName;
     if (PathExists(exitSignalFilePath))
     {
-        std::wcout << "Error: the exit signal file already exists " << exitSignalFilePath << std::endl;
+        LogLine(L"Error: the exit signal file already exists %s", exitSignalFilePath.c_str());
         return -1;
     }
 
@@ -205,7 +206,7 @@ int main()
     auto processHandle = safe_open_process(flags, explorerProcessId);
     if (processHandle.get() == INVALID_HANDLE_VALUE)
     {
-        std::cout << "Failed to open explorer process " << explorerProcessId << std::endl;
+        LogLine(L"Failed to open explorer process");
         return -1;
     }
 
@@ -214,14 +215,14 @@ int main()
     auto allocation = SafeAlloc(processHandle, allocationSize, PAGE_READWRITE);
     if (allocation.get() == nullptr)
     {
-        std::cout << "Failed to allocate memory in process " << explorerProcessId << std::endl;
+        LogLine(L"Failed to allocate memory in explorer process");
         return -1;
     }
 
     // write the dll to load's path in the allocated memory
     if (!WriteProcessMemory(processHandle.get(), allocation.get(), dllPath.c_str(), allocationSize, nullptr))
     {
-        std::cout << "Failed to write memory in process " << explorerProcessId << std::endl;
+        LogLine(L"Failed to write memory in explorer process");
         return -1;
     }
 
@@ -236,7 +237,7 @@ int main()
     }
 
     // ok, successfully injected
-    std::cout << "Successfully injected into process " << explorerProcessId << std::endl;
+    LogLine(L"Successfully injected into explorer process");
 
     // handle shutdown
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)ControlHandler, TRUE);
