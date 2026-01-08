@@ -4,9 +4,6 @@
 #include "taskbar_middle_click.h"
 
 #include <Windows.h>
-#include <psapi.h>
-#include <atomic>
-#include <iostream>
 
 #include "MinHook.h"
 #include "windhawk_common.h"

@@ -86,13 +86,7 @@ bool SymbolResolver::LoadSymbolsFromServer(const std::vector<ModuleHook>& module
     for (const auto& moduleHook : moduleHooks)
     {
         // load the module
-        DWORD64 baseAddress = 0; 
-        if (!SymLoadModuleEx(symbolProcessHandle, NULL, moduleHook.modulePath.c_str(), moduleHook.moduleName.c_str(), baseAddress, 0, NULL, 0))
-        {
-            LogLine(L"Error: SymLoadModuleEx for %S returned error: %d", moduleHook.modulePath.c_str(), GetLastError());
-            error = true;
-            break;
-        }
+        (void)SymLoadModuleEx(symbolProcessHandle, NULL, moduleHook.modulePath.c_str(), moduleHook.moduleName.c_str(), 0, 0, NULL, 0);
 
         // resolve the symbols
         for (const auto& symbolHook : moduleHook.symbolHooks)
