@@ -19,7 +19,7 @@ namespace
     const DWORD INVALID_PROCESS_ID = MAXDWORD;
 
     // Get the root directory path (of this executable)
-    std::wstring GeBasePath()
+    std::wstring GetBasePath()
     {
         auto execuablePath = GetExecuablePath();
         auto executableDir = GetBaseName(execuablePath);
@@ -30,7 +30,7 @@ namespace
     // Returns empty string on error
     std::wstring GetInjectedFilePath()
     {
-        auto executableDir = GeBasePath();
+        auto executableDir = GetBasePath();
 
         auto dllPath = executableDir + L"\\injected.dll";
         if (!PathExists(dllPath))
@@ -129,13 +129,50 @@ namespace
         std::cout << "All symbols looked up successfully" << std::endl;
         return true;
     }
+
+    // Signal the injected thread to exit
+    void SignalInjectedExit()
+    {
+        // log
+        std::cout << "Signalling injected thread to exit" << std::endl;
+
+        // signal thread to exit: create the signal file
+        auto exitSignalFilePath = GetBasePath() + L"\\" + ExitSignaFileName;
+        {
+            std::ofstream exitSignalFile(exitSignalFilePath);
+        }
+
+        // wait for pipe to be seen by shutdown (ie deleted)
+        std::cout << "Waiting for injected thread to exit" << std::endl;
+        while (PathExists(exitSignalFilePath))
+        {
+            // yield before next call
+            // (1 second wait to avoid a tight loop)
+            Sleep(1000);
+        }
+
+        // yield for the dll to unload
+        Sleep(0);
+    }
+
+    // Handler for console control methods
+    BOOL ControlHandler(DWORD dwControlEvent)
+    {
+        // handle shutdown, logoff, ctrl+c and close events
+        if (dwControlEvent == CTRL_SHUTDOWN_EVENT || dwControlEvent == CTRL_LOGOFF_EVENT || dwControlEvent == CTRL_C_EVENT || dwControlEvent == CTRL_CLOSE_EVENT)
+        {
+            SignalInjectedExit();
+        }
+    
+        return true;
+    }
 }
 
 
 int main()
 {
     // check not already running
-    auto exitSignalFilePath = GeBasePath() + L"\\" + ExitSignaFileName;
+    auto exitSignalFilePath = GetBasePath() + L"\\" + ExitSignaFileName;
     if (PathExists(exitSignalFilePath))
     {
         std::wcout << "Error: the exit signal file already exists " << exitSignalFilePath << std::endl;
@@ -201,30 +238,15 @@ int main()
     // ok, successfully injected
     std::cout << "Successfully injected into process " << explorerProcessId << std::endl;
 
-    // need to keep running
+    // handle shutdown
+    SetConsoleCtrlHandler((PHANDLER_ROUTINE)ControlHandler, TRUE);
+
+    // need to keep running (so our RAII objects stay open)
     std::cout << "Press enter to quit:";
     (void)std::cin.get();
 
-    // user closed
-    std::cout << "Signalling injected thread to exit" << std::endl;
+    // user signalled, trigger the injected thread to exit
+    SignalInjectedExit();
 
-    // signal thread to exit: create the signal file
-    {
-        std::ofstream exitSignalFile(exitSignalFilePath);
-    }
-
-    // wait for pipe to be seen by shutdown (ie deleted)
-    std::cout << "Waiting for injected thread to exit" << std::endl;
-    while (PathExists(exitSignalFilePath))
-    {
-        // yield before next call
-        // (1 second wait to avoid a tight loop)
-        Sleep(1000);
-    }
-
-    // yield for the dll to unload
-    Sleep(0);
-
-    std::cout << "Done" << std::endl;
     return 0;
 }
