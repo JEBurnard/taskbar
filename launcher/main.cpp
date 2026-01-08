@@ -1,7 +1,6 @@
 ﻿// application entry point
 // injects injected.dll into explorer.exe
 
-#include <iostream>
 #include <fstream>
 #include <string>
 #include <Windows.h>
@@ -15,6 +14,10 @@
 
 namespace
 {
+    // Flag to indicate if we sent the shutdown signal
+    static std::atomic_flag g_exitSignalSent;
+
+
     // An invalid process id
     // (process ids are divisible by 4, so MAXDWORD is not possible)
     const DWORD INVALID_PROCESS_ID = MAXDWORD;
@@ -131,20 +134,103 @@ namespace
         return true;
     }
 
-    // Signal the injected thread to exit
-    void SignalExitInjectedThread()
+    // Inject the dll into explorer
+    bool InjectIntoExplorer()
     {
-        // log
-        LogLine(L"Signalling injected thread to exit");
-
-        // signal thread to exit: create the signal file
+        // check not already running
         auto exitSignalFilePath = GetBasePath() + L"\\" + ExitSignaFileName;
+        if (PathExists(exitSignalFilePath))
         {
-            std::ofstream exitSignalFile(exitSignalFilePath);
+            LogLine(L"Error: the exit signal file already exists %s", exitSignalFilePath.c_str());
+            return false;
         }
 
-        // wait for pipe to be seen by shutdown (ie deleted)
+        // cache symbols required by mods
+        if (!LookupSymbols())
+        {
+            return false;
+        }
+
+        // get the full path of the binary we want to inject
+        // (narrow characters, for passing to LoadLibraryA)
+        auto dllPath = GetInjectedFilePath();
+        if (dllPath.empty())
+        {
+            return false;
+        }
+
+        // get the id of the first explorer process
+        auto explorerProcessId = GetFirstExplorerProcessId();
+        if (explorerProcessId == INVALID_PROCESS_ID)
+        {
+            return false;
+        }
+
+        // open the process
+        const auto flags = PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | SYNCHRONIZE;
+        auto processHandle = safe_open_process(flags, explorerProcessId);
+        if (processHandle.get() == INVALID_HANDLE_VALUE)
+        {
+            LogLine(L"Failed to open explorer process");
+            return false;
+        }
+
+        // allocate memory for the path to our dll to inject
+        const auto allocationSize = dllPath.size() * sizeof(wchar_t);
+        auto allocation = SafeAlloc(processHandle, allocationSize, PAGE_READWRITE);
+        if (allocation.get() == nullptr)
+        {
+            LogLine(L"Failed to allocate memory in explorer process");
+            return false;
+        }
+
+        // write the dll to load's path in the allocated memory
+        if (!WriteProcessMemory(processHandle.get(), allocation.get(), dllPath.c_str(), allocationSize, nullptr))
+        {
+            LogLine(L"Failed to write memory in explorer process");
+            return false;
+        }
+
+        // start (and await) thread in the process which will load the dll (and spawn the modifier thread)
+        {
+            SafeCreateRemoteThread threadHandle(processHandle.get(), LPTHREAD_START_ROUTINE(LoadLibraryW), allocation.get());
+            if (threadHandle.get() == NULL)
+            {
+                LogLine(L"Failed to create load thread in explorer process");
+                return false;
+            }
+        }
+
+        // ok, successfully injected
+        LogLine(L"Successfully injected into explorer process");
+        return true;
+    }
+
+    // Signal the injected thread to exit
+    void SignalExit()
+    {
+        auto exitSignalFilePath = GetBasePath() + L"\\" + ExitSignaFileName;
+
+        // only signal once
+        auto signalSent = g_exitSignalSent.test_and_set(std::memory_order_acquire);
+        if (!signalSent)
+        {
+            // log
+            LogLine(L"Signalling injected thread to exit");
+
+            // signal thread to exit: create the signal file
+            {
+                std::ofstream exitSignalFile(exitSignalFilePath);
+            }
+        }
+    }
+
+    // Wait for the injected thread to exit
+    void WaitForExit()
+    {
+        // wait for the file to be seen by the injected thread (ie deleted)
         LogLine(L"Waiting for injected thread to exit");
+        auto exitSignalFilePath = GetBasePath() + L"\\" + ExitSignaFileName;
         while (PathExists(exitSignalFilePath))
         {
             // yield before next call
@@ -154,100 +240,72 @@ namespace
 
         // yield for the dll to unload
         Sleep(0);
+
+        LogLine(L"Injected thread exited");
     }
 
-    // Handler for console control methods
-    BOOL ControlHandler(DWORD dwControlEvent)
+    // Windows message handling procedure
+    LRESULT CALLBACK WindowProcedure(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
-        // handle shutdown, logoff, ctrl+c and close events
-        if (dwControlEvent == CTRL_SHUTDOWN_EVENT || dwControlEvent == CTRL_LOGOFF_EVENT || dwControlEvent == CTRL_C_EVENT || dwControlEvent == CTRL_CLOSE_EVENT)
+        switch (msg)
         {
-            SignalExitInjectedThread();
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+        default:
+            return DefWindowProc(hwnd, msg, wParam, lParam);
         }
-    
-        return true;
+        return 0;
     }
 }
 
 
-int main()
+// Program entry
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ PWSTR pCmdLine, _In_ int nCmdShow)
 {
-    // check not already running
-    auto exitSignalFilePath = GetBasePath() + L"\\" + ExitSignaFileName;
-    if (PathExists(exitSignalFilePath))
-    {
-        LogLine(L"Error: the exit signal file already exists %s", exitSignalFilePath.c_str());
-        return -1;
-    }
-
-    // cache symbols required by mods
-    if (!LookupSymbols())
+    // inject our dll into explorer
+    if (!InjectIntoExplorer())
     {
         return -1;
     }
 
-    // get the full path of the binary we want to inject
-    // (narrow characters, for passing to LoadLibraryA)
-    auto dllPath = GetInjectedFilePath();
-    if (dllPath.empty())
+    // do while false error catcher
+    do
     {
-        return -1;
-    }
-
-    // get the id of the first explorer process
-    auto explorerProcessId = GetFirstExplorerProcessId();
-    if (explorerProcessId == INVALID_PROCESS_ID)
-    {
-        return -1;
-    }
-
-    // open the process
-    const auto flags = PROCESS_CREATE_THREAD | PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_QUERY_INFORMATION | SYNCHRONIZE;
-    auto processHandle = safe_open_process(flags, explorerProcessId);
-    if (processHandle.get() == INVALID_HANDLE_VALUE)
-    {
-        LogLine(L"Failed to open explorer process");
-        return -1;
-    }
-
-    // allocate memory for the path to our dll to inject
-    const auto allocationSize = dllPath.size() * sizeof(wchar_t);
-    auto allocation = SafeAlloc(processHandle, allocationSize, PAGE_READWRITE);
-    if (allocation.get() == nullptr)
-    {
-        LogLine(L"Failed to allocate memory in explorer process");
-        return -1;
-    }
-
-    // write the dll to load's path in the allocated memory
-    if (!WriteProcessMemory(processHandle.get(), allocation.get(), dllPath.c_str(), allocationSize, nullptr))
-    {
-        LogLine(L"Failed to write memory in explorer process");
-        return -1;
-    }
-
-    // start (and await) thread in the process which will load the dll (and spawn the modifier thread)
-    {
-        SafeCreateRemoteThread threadHandle(processHandle.get(), LPTHREAD_START_ROUTINE(LoadLibraryW), allocation.get());
-        if (threadHandle.get() == NULL)
+        // create a windows class
+        const std::wstring className = L"Taskbar Launcher Class";
+        WNDCLASSEX wc = { 0 };
+        wc.cbSize = sizeof(WNDCLASSEX);
+        wc.lpfnWndProc = WindowProcedure;
+        wc.hInstance = hInstance;
+        wc.lpszClassName = className.c_str();
+        if (!RegisterClassEx(&wc))
         {
-            std::cout << "Failed to create load thread in process " << explorerProcessId << std::endl;
-            return -1;
+            break;
         }
-    }
 
-    // ok, successfully injected
-    LogLine(L"Successfully injected into explorer process");
+        // create a message only window
+        const std::wstring windowName = L"Taskbar Launcher";
+        auto hwnd = CreateWindowEx(0, className.c_str(), windowName.c_str(), CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, HWND_MESSAGE, NULL, hInstance, NULL);
+        if (hwnd == NULL)
+        {
+            break;
+        }
 
-    // handle shutdown
-    SetConsoleCtrlHandler((PHANDLER_ROUTINE)ControlHandler, TRUE);
+        // main loop
+        MSG msg = { 0 };
+        while (GetMessage(&msg, NULL, 0, 0) > 0)
+        {
+            (void)TranslateMessage(&msg);
+            (void)DispatchMessage(&msg);
+        }
 
-    // need to keep running (so our RAII objects stay open)
-    std::cout << "Press enter to quit:";
-    (void)std::cin.get();
+    } while (false);
 
-    // user signalled, trigger the injected thread to exit
-    SignalExitInjectedThread();
+    // main loop exited, or failed to start
+    // ensure we stop the injected process
+    SignalExit();
+    WaitForExit();
 
     return 0;
 }
