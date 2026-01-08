@@ -7,6 +7,7 @@
 #include "MinHook.h"
 #include "windhawk_common.h"
 #include "taskbar_middle_click.h"
+#include "taskbar_grouping.h"
 
 
 namespace
@@ -164,6 +165,7 @@ std::vector<std::unique_ptr<IExplorerModifier>> Modifiers()
 {
     std::vector<std::unique_ptr<IExplorerModifier>> modifiers;
     modifiers.push_back(std::make_unique<TaskbarMiddleClick>());
+    modifiers.push_back(std::make_unique<TaskbarGrouping>());
 
     return modifiers;
 }
